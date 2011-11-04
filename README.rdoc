@@ -1,7 +1,6 @@
 = DraggableGridView
 
-A drag-and-drop scrolling grid view for Android
-
+a drag-and-drop scrolling grid view for Android
 == Including in your project
 
 To start using DraggableGridView:
@@ -20,7 +19,7 @@ To start using DraggableGridView:
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        dgv = ((DraggableGridView)findViewById(R.id.vgv));
+        dgv = ((DraggableGridView)findViewById(R.id.dgv));
     }
 <b>5.</b> You're done! You can start adding any type of view you'd like.
   TextView tv = new TextView(this);
@@ -36,6 +35,15 @@ To start using DraggableGridView:
 * Becomes scrollable when it contains more children than are visible
 * Can scroll even when a child is being dragged: just bring it to the very top or bottom
 * Easy to modify or extend!
+
+== The Sample Project
+
+The included project is an Android version of magnetic poetry, which you might have seen covering an eccentric friend's refrigerator. It creates an OnRearrangeListener for its DraggableGridView which manipulates an ArrayList of strings.
+
+If you'd rather not have to separately keep track of the grid's elements, I suggest creating your own type of View that contains any information you need about the children and collecting this information from the DraggableGridView when you need it:
+  String[] words = new String[dgv.getChildCount()];
+  for (int i = 0; i < words.length; i++)
+      words[i] = ((CustomView)dgv.getChildAt(i)).word;
 
 == Notes
 
