@@ -4,12 +4,13 @@ a drag-and-drop scrolling grid view for Android
 == Including in your project
 
 To start using DraggableGridView:
-<b>1.</b> Place libs/DraggableGridView.jar into your project's directory and add it to the build path (http://www.wikihow.com/Add-JARs-to-Project-Build-Paths-in-Eclipse-%28Java%29)
-<b>2.</b> Add an import to the activity you'd like to use it in:
+
+* Place libs/DraggableGridView.jar into your project's directory and add it to the build path (http://www.wikihow.com/Add-JARs-to-Project-Build-Paths-in-Eclipse-%28Java%29)
+* Add an import to the activity you'd like to use it in:
   import com.animoto.android.views.*;
-<b>3.</b> Add the view to your activity's layout XML and save it:
+* Add the view to your activity's layout XML and save it:
   <com.animoto.android.views.DraggableGridView android:id="@+id/dgv" android:layout_height="fill_parent" android:layout_width="fill_parent" android:layout_alignParentTop="true" android:layout_alignParentLeft="true"></com.animoto.android.views.DraggableGridView>
-<b>4.</b> Obtain a reference to the view to use in code:
+* Obtain a reference to the view to use in code:
   public class DraggableGridViewSampleActivity extends Activity {
     DraggableGridView dgv;
   	
@@ -21,7 +22,7 @@ To start using DraggableGridView:
         
         dgv = ((DraggableGridView)findViewById(R.id.dgv));
     }
-<b>5.</b> You're done! You can start adding any type of view you'd like.
+* You're done! You can start adding any type of view you'd like.
   TextView tv = new TextView(this);
   tv.setText("Hello world!");
   dgv.addView(tv);
@@ -49,5 +50,5 @@ If you'd rather not have to separately keep track of the grid's elements, I sugg
 
 * This was developed targeting Android 2.2 (API level 8), though I'm sure it can be made to work on lower versions.
 * The sample project's main activity doesn't handle onConfigurationChanged, so it will restart if the screen orientation changes. I'll fix this soon, but it's not particularly important.
-* DraggableGridView and all associated code are Copyright (c) 2011, Animoto Inc, available under the Apache License, Version 2.0.
+* DraggableGridView and all associated code are (c) 2011, Animoto Inc, available under the Apache License, Version 2.0.
 * Check us out at http://www.animoto.com !
