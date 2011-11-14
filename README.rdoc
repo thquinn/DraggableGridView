@@ -10,24 +10,24 @@ To start using DraggableGridView:
   import com.animoto.android.views.*;
 * Add the view to your activity's layout XML and save it:
 
-  <com.animoto.android.views.DraggableGridView android:id="@+id/dgv" android:layout_height="fill_parent" android:layout_width="fill_parent" android:layout_alignParentTop="true" android:layout_alignParentLeft="true">
-  </com.animoto.android.views.DraggableGridView>
+    <com.animoto.android.views.DraggableGridView android:id="@+id/dgv" android:layout_height="fill_parent" android:layout_width="fill_parent" android:layout_alignParentTop="true" android:layout_alignParentLeft="true">
+    </com.animoto.android.views.DraggableGridView>
 * Obtain a reference to the view to use in code:
-  public class DraggableGridViewSampleActivity extends Activity {
-    DraggableGridView dgv;
-  	
-    /** Called when the activity is first created. */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
-        
-        dgv = ((DraggableGridView)findViewById(R.id.dgv));
-    }
+    public class DraggableGridViewSampleActivity extends Activity {
+      DraggableGridView dgv;
+    	
+      /** Called when the activity is first created. */
+      @Override
+      public void onCreate(Bundle savedInstanceState) {
+          super.onCreate(savedInstanceState);
+          setContentView(R.layout.main);
+          
+          dgv = ((DraggableGridView)findViewById(R.id.dgv));
+      }
 * You're done! You can start adding any type of view you'd like.
-  TextView tv = new TextView(this);
-  tv.setText("Hello world!");
-  dgv.addView(tv);
+    TextView tv = new TextView(this);
+    tv.setText("Hello world!");
+    dgv.addView(tv);
 
 == Features
 
