@@ -9,7 +9,8 @@ To start using DraggableGridView:
 * Add an import to the activity you'd like to use it in:
   import com.animoto.android.views.*;
 * Add the view to your activity's layout XML and save it:
-  <com.animoto.android.views.DraggableGridView android:id="@+id/dgv" android:layout_height="fill_parent" android:layout_width="fill_parent" android:layout_alignParentTop="true" android:layout_alignParentLeft="true"></com.animoto.android.views.DraggableGridView>
+  <com.animoto.android.views.DraggableGridView android:id="@+id/dgv" android:layout_height="fill_parent" android:layout_width="fill_parent" android:layout_alignParentTop="true" android:layout_alignParentLeft="true">
+  </com.animoto.android.views.DraggableGridView>
 * Obtain a reference to the view to use in code:
   public class DraggableGridViewSampleActivity extends Activity {
     DraggableGridView dgv;
