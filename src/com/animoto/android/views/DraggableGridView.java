@@ -24,10 +24,12 @@ import android.view.animation.TranslateAnimation;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ImageView;
 
 public class DraggableGridView extends ViewGroup implements View.OnTouchListener, View.OnClickListener, View.OnLongClickListener {
 	//layout vars
+	public static float childRatio = .9f;
     protected int colCount, childSize, padding, dpi, scroll = 0;
     protected float lastDelta = 0;
     protected Handler handler = new Handler();
@@ -35,11 +37,12 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
     protected int dragged = -1, lastX = -1, lastY = -1, lastTarget = -1;
     protected boolean enabled = true, touching = false;
     //anim vars
-    protected static final int animT = 300;
+    public static int animT = 150;
     protected ArrayList<Integer> newPositions = new ArrayList<Integer>();
     //listeners
     protected OnRearrangeListener onRearrangeListener;
     protected OnClickListener secondaryOnClickListener;
+    private OnItemClickListener onItemClickListener;
     
     //CONSTRUCTOR AND HELPERS
     public DraggableGridView (Context context, AttributeSet attrs) {
@@ -87,13 +90,11 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
         }
     };
     
-    //OVERRIDDEN METHODS
-    
     //OVERRIDES
     @Override
     public void addView(View child) {
     	super.addView(child);
-    	newPositions.add(getChildCount() - 1);
+    	newPositions.add(-1);
     };
     @Override
     public void removeViewAt(int index) {
@@ -120,7 +121,7 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
         
         //determine childSize and padding, in px
         childSize = (r - l) / colCount;
-        childSize = childSize * 3 / 4;
+        childSize = Math.round(childSize * childRatio);
         padding = ((r - l) - (childSize * colCount)) / (colCount + 1);
     	
         for (int i = 0; i < getChildCount(); i++)
@@ -165,13 +166,15 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
     {
         if (getColOrRowFromCoor(y + scroll) == -1) //touch is between rows
             return -1;
-        if (getIndexFromCoor(x, y) != -1) //touch on top of another visual
-            return -1;
+        //if (getIndexFromCoor(x, y) != -1) //touch on top of another visual
+            //return -1;
         
-        int leftPos = getIndexFromCoor(x - childSize, y);
-        int rightPos = getIndexFromCoor(x + childSize, y);
+        int leftPos = getIndexFromCoor(x - (childSize / 4), y);
+        int rightPos = getIndexFromCoor(x + (childSize / 4), y);
         if (leftPos == -1 && rightPos == -1) //touch is in the middle of nowhere
             return -1;
+        if (leftPos == rightPos) //touch is in the middle of a visual
+        	return -1;
         
         int target = -1;
         if (rightPos > -1)
@@ -201,8 +204,13 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
     
     //EVENT HANDLERS
     public void onClick(View view) {
-    	if (enabled && secondaryOnClickListener != null)
-    		secondaryOnClickListener.onClick(view);
+    	if (enabled)
+    	{
+    		if (secondaryOnClickListener != null)
+    			secondaryOnClickListener.onClick(view);
+    		if (onItemClickListener != null && getLastIndex() != -1)
+    			onItemClickListener.onItemClick(null, getChildAt(getLastIndex()), getLastIndex(), getLastIndex() / colCount);
+    	}
     }
     public boolean onLongClick(View view)
     {
@@ -432,5 +440,9 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
     public void setOnRearrangeListener(OnRearrangeListener l)
     {
     	this.onRearrangeListener = l;
+    }
+    public void setOnItemClickListener(OnItemClickListener l)
+    {
+    	this.onItemClickListener = l;
     }
 }

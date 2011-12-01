@@ -48,6 +48,11 @@ If you'd rather not have to separately keep track of the grid's elements, I sugg
   for (int i = 0; i < words.length; i++)
       words[i] = ((CustomView)dgv.getChildAt(i)).word;
 
+== To Do
+
+* Remove scrolling timer
+* Improve performance
+
 == Notes
 
 * This was developed targeting Android 2.2 (API level 8), though I'm sure it can be made to work on lower versions.

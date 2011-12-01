@@ -13,6 +13,8 @@ import android.graphics.Rect;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
 
@@ -48,13 +50,11 @@ public class DraggableGridViewSampleActivity extends Activity {
 					poem.add(newIndex, word);
 			}
 		});
-    	dgv.setOnClickListener(new OnClickListener() {
-			public void onClick(View arg0) {
-				int index = dgv.getLastIndex();
-				if (index == -1)
-					return;
-				dgv.removeViewAt(index);
-				poem.remove(index);
+    	dgv.setOnItemClickListener(new OnItemClickListener() {
+    		public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3)
+    		{
+				dgv.removeViewAt(arg2);
+				poem.remove(arg2);
 			}
 		});
     	button1.setOnClickListener(new OnClickListener() {
