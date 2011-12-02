@@ -51,8 +51,8 @@ public class DraggableGridViewSampleActivity extends Activity {
 			}
 		});
     	dgv.setOnItemClickListener(new OnItemClickListener() {
-    		public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3)
-    		{
+			@Override
+			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
 				dgv.removeViewAt(arg2);
 				poem.remove(arg2);
 			}

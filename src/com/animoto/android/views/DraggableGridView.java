@@ -51,7 +51,7 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
         handler.removeCallbacks(updateTask);
         handler.postAtTime(updateTask, SystemClock.uptimeMillis() + 500);
         setChildrenDrawingOrderEnabled(true);
-        
+
         DisplayMetrics metrics = new DisplayMetrics();
         ((Activity)context).getWindowManager().getDefaultDisplay().getMetrics(metrics);
 		dpi = metrics.densityDpi;
@@ -71,9 +71,9 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
         {
             if (dragged != -1)
             {
-            	if (lastY < padding && scroll > 0)
+            	if (lastY < padding * 3 && scroll > 0)
             		scroll -= 20;
-            	else if (lastY > getBottom() - getTop() - padding && scroll < getMaxScroll())
+            	else if (lastY > getBottom() - getTop() - (padding * 3) && scroll < getMaxScroll())
             		scroll += 20;
             }
             else if (lastDelta != 0 && !touching)
@@ -300,7 +300,7 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
         int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
     	v.layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
     	AnimationSet animSet = new AnimationSet(true);
-		ScaleAnimation scale = new ScaleAnimation(.667f, 1, .667f, 1, childSize / 2, childSize / 2);
+		ScaleAnimation scale = new ScaleAnimation(.667f, 1, .667f, 1, childSize * 3 / 4, childSize * 3 / 4);
 		scale.setDuration(animT);
 		AlphaAnimation alpha = new AlphaAnimation(1, .5f);
 		alpha.setDuration(animT);
