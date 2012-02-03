@@ -24,22 +24,30 @@ import android.view.animation.TranslateAnimation;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
+import android.view.View.OnTouchListener;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ImageView;
 
-public class DraggableGridView extends ViewGroup implements View.OnTouchListener, View.OnClickListener, View.OnLongClickListener {
-	//layout vars
+public class DraggableGridView extends ViewGroup implements OnTouchListener, OnClickListener, OnLongClickListener {
+	// Layout
+	public static final float DRAGGABLE_CELL_EXPANSION = 6f / 5;
 	public static float childRatio = .9f;
     protected int colCount, childSize, padding, dpi, scroll = 0;
     protected float lastDelta = 0;
     protected Handler handler = new Handler();
-    //dragging vars
+ 
+    // Dragging
+    public static final int SCROLL_REFRESH_DELAY_MS = 25;
     protected int dragged = -1, lastX = -1, lastY = -1, lastTarget = -1;
     protected boolean enabled = true, touching = false;
-    //anim vars
+
+    // Animation
     public static int animT = 150;
     protected ArrayList<Integer> newPositions = new ArrayList<Integer>();
-    //listeners
+
+    // Listeners
     protected OnRearrangeListener onRearrangeListener;
     protected OnClickListener secondaryOnClickListener;
     private OnItemClickListener onItemClickListener;
@@ -86,7 +94,7 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
             clampScroll();
             onLayout(true, getLeft(), getTop(), getRight(), getBottom());
         
-            handler.postDelayed(this, 25);
+            handler.postDelayed(this, SCROLL_REFRESH_DELAY_MS);
         }
     };
     
@@ -225,6 +233,12 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
         }
         return false;
     }
+    /*
+     * Handle touch
+     * 
+     * @return true if the event has been consumed; false otherwise
+     * @see android.view.View.OnTouchListener#onTouch(android.view.View, android.view.MotionEvent)
+     */
     public boolean onTouch(View view, MotionEvent event)
     {
         int action = event.getAction();
@@ -236,13 +250,19 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
                    touching = true;
                    break;
                case MotionEvent.ACTION_MOVE:
-            	   int delta = lastY - (int)event.getY();
+             	   int delta = lastY - (int)event.getY();
                    if (dragged != -1)
                    {
                        //change draw location of dragged visual
-                       int x = (int)event.getX(), y = (int)event.getY();
-                       int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
-                       getChildAt(dragged).layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
+                       int x = (int)event.getX();
+                       int y = (int)event.getY();
+                   	   int offset = (int)(childSize * DRAGGABLE_CELL_EXPANSION / 2);
+                       int left = x - offset;
+                       int top = y - offset;
+                       int draggableCellSize = (int)(childSize * DRAGGABLE_CELL_EXPANSION);
+                       getChildAt(dragged).layout(left, top,
+                                                  left + draggableCellSize,
+                                                  top + draggableCellSize);
                        
                        //check for new target hover
                        int target = getTargetFromCoor(x, y);
@@ -297,10 +317,18 @@ public class DraggableGridView extends ViewGroup implements View.OnTouchListener
     {
     	View v = getChildAt(dragged);
     	int x = getCoorFromIndex(dragged).x + childSize / 2, y = getCoorFromIndex(dragged).y + childSize / 2;
-        int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
-    	v.layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
+
+        int draggableCellSize = (int)(childSize * DRAGGABLE_CELL_EXPANSION);
+    	int offset = (int)(childSize * DRAGGABLE_CELL_EXPANSION / 2);
+       	int left = x - offset;
+       	int top  = y - offset;
+    	v.layout(left, top, left + draggableCellSize, top + draggableCellSize);
     	AnimationSet animSet = new AnimationSet(true);
-		ScaleAnimation scale = new ScaleAnimation(.667f, 1, .667f, 1, childSize * 3 / 4, childSize * 3 / 4);
+        float draggableCellExpansionInverse = 1 / DRAGGABLE_CELL_EXPANSION;
+		ScaleAnimation scale =
+			new ScaleAnimation(draggableCellExpansionInverse, 1,
+					           draggableCellExpansionInverse, 1,
+					           childSize / DRAGGABLE_CELL_EXPANSION, childSize / DRAGGABLE_CELL_EXPANSION);
 		scale.setDuration(animT);
 		AlphaAnimation alpha = new AlphaAnimation(1, .5f);
 		alpha.setDuration(animT);
