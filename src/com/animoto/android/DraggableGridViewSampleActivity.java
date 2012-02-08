@@ -1,79 +1,120 @@
 package com.animoto.android;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.animoto.android.views.*;
+// import com.sonyericsson.tutorial.list1.MyListView;
+// import com.sonyericsson.tutorial.list1.TestActivity.MyAdapter;
+// import com.markupartist.android.widget.actionbar.R;
 
 public class DraggableGridViewSampleActivity extends Activity {
+
 	static Random random = new Random();
-	static String[] words = "the of and a to in is be that was he for it with as his I on have at by not they this had are but from or she an which you one we all were her would there their will when who him been has more if no out do so can what up said about other into than its time only could new them man some these then two first may any like now my such make over our even most me state after also made many did must before back see through way where get much go well your know should down work year because come people just say each those take day good how long Mr own too little use us very great still men here life both between old under last never place same another think house while high right might came off find states since used give against three himself look few general hand school part small American home during number again Mrs around thought went without however govern don't does got public United point end become head once course fact upon need system set every war put form water took".split(" ");
-	DraggableGridView dgv;
-	Button button1, button2;
-	ArrayList<String> poem = new ArrayList<String>();
-	
-    /** Called when the activity is first created. */
+	private DraggableGridView gridView;
+	private Button addButton;
+	private Button viewButton;
+	// ArrayList<String> poem = new ArrayList<String>();
+	WordAdapter poem;
+	static ArrayList<String> allWords;
+
+	static {
+//		String wordsString = Resources.getSystem().getString(R.string.button1Text);
+//		String[] wordArray = wordsString.split("\\s+");
+//    	List<String> wordList = Arrays.asList(wordArray);
+//		words = new ArrayList<String>(wordList);
+	}
+
+	/** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        
-        dgv = ((DraggableGridView)findViewById(R.id.vgv));
-        button1 = ((Button)findViewById(R.id.button1));
-        button2 = ((Button)findViewById(R.id.button2));
+
+        Context context = getApplication();
+		this.gridView = (DraggableGridView)findViewById(R.id.dgv);
+        //this.gridView = new DraggableGridView(context, null);
+        this.addButton = ((Button)findViewById(R.id.add_button));
+        this.viewButton = ((Button)findViewById(R.id.view_button));
+
+        String wordsString = getApplication().getString(R.string.words);
+        String[] wordArray = wordsString.split(" ");
+        List<String> wordList = Arrays.asList(wordArray);
+        allWords = new ArrayList<String>(wordList);
+
+        // final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getApplication(), R.layout.grid_item);
+        this.poem = new WordAdapter(this, new ArrayList<String>());
+        this.gridView.setAdapter(poem);
         
         setListeners();
     }
+
     private void setListeners()
     {
-    	dgv.setOnRearrangeListener(new OnRearrangeListener() {
+    	this.gridView.setOnRearrangeListener(new OnRearrangeListener() {
 			public void onRearrange(int oldIndex, int newIndex) {
-				String word = poem.remove(oldIndex);
-				if (oldIndex < newIndex)
-					poem.add(newIndex, word);
-				else
-					poem.add(newIndex, word);
+				String item = poem.getItem(oldIndex);
+				poem.remove(item);
+				if (oldIndex < newIndex) {
+					poem.insert(item, newIndex);
+				}
+				else {
+					poem.add(item);
+					gridView.requestLayout();
+				}
 			}
 		});
-    	dgv.setOnItemClickListener(new OnItemClickListener() {
+
+    	this.gridView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
-			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
-				dgv.removeViewAt(arg2);
-				poem.remove(arg2);
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				DraggableGridViewSampleActivity.this.gridView.removeViewAt(position);
+				poem.remove( poem.getItem(position) );
 			}
 		});
-    	button1.setOnClickListener(new OnClickListener() {
+ 
+    	this.addButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View arg0) {
-				String word = words[random.nextInt(words.length)];
-				ImageView view = new ImageView(DraggableGridViewSampleActivity.this);
-				view.setImageBitmap(getThumb(word));
-				dgv.addView(view);
+				String word = allWords.get(random.nextInt(allWords.size()));
 				poem.add(word);
+				// poem.notifyDataSetChanged();
+				gridView.requestLayout();
 			}
 		});
-    	button2.setOnClickListener(new OnClickListener() {
+
+    	this.viewButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View arg0) {
 				String finishedPoem = "";
-				for (String s : poem)
-					finishedPoem += s + " ";
+				for (int i = 0; i < poem.getCount(); i++) {
+					finishedPoem += poem.getItem(i) + " ";
+				}
 				new AlertDialog.Builder(DraggableGridViewSampleActivity.this)
-			    .setTitle("Here's your poem!")
-			    .setMessage(finishedPoem).show();
+			    	.setTitle("Here's your poem!")
+			    	.setMessage(finishedPoem).show();
 			}
 		});
     }
@@ -94,4 +135,45 @@ public class DraggableGridViewSampleActivity extends Activity {
 	    
 		return bmp;
 	}
+
+    public WordAdapter getAdapter() {
+    	return this.poem;
+    }
+    
+    
+    /**
+     * Adapter class to use for the list
+     */
+    private static class WordAdapter extends ArrayAdapter<String> {
+
+    	private Context context;
+    	ArrayList<String> words;
+    	/**
+         * Constructor
+         * 
+         * @param context The context
+         * @param contacts The list of contacts
+         */
+        public WordAdapter(final Context context, final ArrayList<String> words) {
+            super(context, 0, words);
+            this.context = context;
+            this.words = words;
+        }
+
+        @Override
+        public View getView(final int position, final View convertView, final ViewGroup parent) {
+            View view = convertView;
+            if (view == null) {
+            	// LayoutInflater inflater = LayoutInflater.from( this.context.getApplicationContext() );
+            	LayoutInflater inflater =
+            		(LayoutInflater)this.context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                view = (View)inflater.inflate(R.layout.grid_item, null);
+            }
+
+            final TextView name = (TextView)view.findViewById(R.id.grid_item_text);
+            name.setText( this.words.get(position) );
+
+           return view;
+        }
+    }
 }

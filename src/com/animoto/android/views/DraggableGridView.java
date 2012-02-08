@@ -1,79 +1,147 @@
-//TO DO:
-//
-// - improve timer performance (especially on Eee Pad)
-// - improve child rearranging
-
+/*
+ * DraggableGridView
+ * 
+ * Portions adapted from
+ * http://blogs.sonyericsson.com/wp/2010/05/20/android-tutorial-making-your-own-3d-list-part-1/
+ * 
+ * TO DO:
+ * Improve timer performance (especially on Eee Pad)
+ * Improve child rearranging
+ */
 package com.animoto.android.views;
 
 import java.util.Collections;
 import java.util.ArrayList;
-
+import java.util.LinkedList;
 
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
 import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.View.OnTouchListener;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
-import android.view.View.OnTouchListener;
-import android.widget.AdapterView.OnItemClickListener;
+import android.view.View;
+import android.widget.Adapter;
+import android.widget.AdapterView;
 import android.widget.ImageView;
 
-public class DraggableGridView extends ViewGroup implements OnTouchListener, OnClickListener, OnLongClickListener {
+
+public class DraggableGridView extends AdapterView
+							   implements OnTouchListener, OnClickListener, OnLongClickListener {
+    /** Represents an invalid child index */
+    private static final int INVALID_INDEX = -1;
+
+    /** Distance to drag before we intercept touch events */
+    private static final int TOUCH_SCROLL_THRESHOLD = 10;
+
+    /** Children added with this layout mode will be added below the last child */
+    private static final int LAYOUT_MODE_BELOW = 0;
+
+    /** Children added with this layout mode will be added above the first child */
+    private static final int LAYOUT_MODE_ABOVE = 1;
+
+    /** User is not touching the list */
+    private static final int TOUCH_STATE_RESTING = 0;
+
+    /** User is touching the list and right now it's still a "click" */
+    private static final int TOUCH_STATE_CLICK = 1;
+
+    /** User is scrolling the list */
+    private static final int TOUCH_STATE_SCROLL = 2;
+
+    /**
+	 * Adapter with all the data.
+	 */
+	private Adapter adapter; 
+
 	// Layout
-	public static final float DRAGGABLE_CELL_EXPANSION = 6f / 5;
 	public static float childRatio = .9f;
-    protected int colCount, childSize, padding, dpi, scroll = 0;
+    protected int columnCount;
+    protected int childSize;
+    protected int padding;
+    protected int dpi;
+    protected int scroll = 0;
     protected float lastDelta = 0;
     protected Handler handler = new Handler();
- 
+
+    // Scrolling
+    protected int touchStartY;
+    protected int listTopStart;
+    protected int listTop;
+    protected int listTopOffset;
+
+    /** The adapter position of the first visible item */
+    private int firstItemPosition;
+
+    /** The adapter position of the last visible item */
+    private int lastItemPosition;
+
+    /** A list of cached (re-usable) item views */
+    private final LinkedList<View> cachedItemViews = new LinkedList<View>();
+
+    /** Used to check for long press actions */
+    private Runnable longPressRunnable;
+
+    /** Reusable rectangle */
+    private Rect rectangle;
+
+
     // Dragging
-    public static final int SCROLL_REFRESH_DELAY_MS = 25;
     protected int dragged = -1, lastX = -1, lastY = -1, lastTarget = -1;
     protected boolean enabled = true, touching = false;
 
     // Animation
     public static int animT = 150;
     protected ArrayList<Integer> newPositions = new ArrayList<Integer>();
-
+   
     // Listeners
     protected OnRearrangeListener onRearrangeListener;
     protected OnClickListener secondaryOnClickListener;
     private OnItemClickListener onItemClickListener;
     
-    //CONSTRUCTOR AND HELPERS
+    /**
+     * Constructor
+     * @param context Context information
+     * @param attrs attributes of grid view
+     */
     public DraggableGridView (Context context, AttributeSet attrs) {
-        super(context, attrs);
-        setListeners();
-        handler.removeCallbacks(updateTask);
-        handler.postAtTime(updateTask, SystemClock.uptimeMillis() + 500);
+
+    	super(context, attrs);
+
+    	setListeners();
+        // handler.removeCallbacks(updateTask);
+        // handler.postAtTime(updateTask, SystemClock.uptimeMillis() + 500);
         setChildrenDrawingOrderEnabled(true);
 
         DisplayMetrics metrics = new DisplayMetrics();
         ((Activity)context).getWindowManager().getDefaultDisplay().getMetrics(metrics);
-		dpi = metrics.densityDpi;
+		this.dpi = metrics.densityDpi;
     }
-    protected void setListeners()
-    {
+
+    protected void setListeners() {
     	setOnTouchListener(this);
-    	super.setOnClickListener(this);
+    	//super.setOnClickListener(this);
         setOnLongClickListener(this);
     }
+
     @Override
     public void setOnClickListener(OnClickListener l) {
     	secondaryOnClickListener = l;
     }
+
+    /*
     protected Runnable updateTask = new Runnable() {
         public void run()
         {
@@ -94,23 +162,324 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
             clampScroll();
             onLayout(true, getLeft(), getTop(), getRight(), getBottom());
         
-            handler.postDelayed(this, SCROLL_REFRESH_DELAY_MS);
+            handler.postDelayed(this, 25);
         }
     };
+    */
+
+
+    /**
+     * Assign a new adapter.
+     * Clear all views and request a layout to get and position the new adapter's views.
+     *
+     * @param adapter Bridge between data and AdapterView layout
+     */
+    @Override
+    public void setAdapter(Adapter adapter) {
+      this.adapter = adapter;
+      removeAllViewsInLayout();
+      requestLayout();
+    }
+   
+    @Override
+    public Adapter getAdapter() {
+      return this.adapter;
+    }
+   
+    @Override
+    public void setSelection(int position) {
+      throw new UnsupportedOperationException("Not supported");
+    }
+   
+    @Override
+    public View getSelectedView() {
+      throw new UnsupportedOperationException("Not supported");
+    }
+
+    /*
+     * Lay out views on the screen.
+     * 
+     * @param changed
+     * @param left
+     * @param top
+     * @param right
+     * @param bottom
+     * 
+     * @see android.widget.AdapterView#onLayout(boolean, int, int, int, int)
+     */
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+
+    	super.onLayout(changed, left, top, right, bottom);
+
+    	// Compute width of view.
+        float width = (right - left) / (this.dpi / 160f);
+
+/*
+        float w = width;
+        int colCount = 2;
+        int sub = 240;
+        w -= 280;
+        while (w > 0)
+        {
+        	colCount++;
+        	w -= sub;
+        	sub += 40;
+        }
+*/
+        // Determine number of columns (at least 2).
+        int columnWidth = 100;
+        int gutterWidth = 10;
+        this.columnCount = (int)Math.max(2f, (width + gutterWidth) / (columnWidth + gutterWidth));
+
+        // Determine childSize and padding, in px.
+        this.childSize = (right - left) / this.columnCount;
+        this.childSize = Math.round(this.childSize * DraggableGridView.childRatio);
+        this.padding = ((right - left) - (this.childSize * this.columnCount)) / (this.columnCount + 1);
+/*
+        for (int i = 0; i < getChildCount(); i++) {
+        	if (i != dragged)
+        	{
+	            Point xy = getCoorFromIndex(i);
+	            getChildAt(i).layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
+        	}
+        }
+*/
+        // if we don't have an adapter, we don't need to do anything
+    	if (this.adapter == null) {
+    		return;
+    	}
+
+    	// Add child views if we don't have any yet.
+    	if (getChildCount() == 0) {
+    		this.lastItemPosition = -1;
+            fillListDown(this.listTop, 0);
+        }
+    	else {
+            final int offset = this.listTop + this.listTopOffset - getChildAt(0).getTop();
+            removeNonVisibleViews(offset);
+            fillList(offset);
+        }
+    	// Position the views.
+    	positionItems();
+    	invalidate();
+    }
+
+
+    /**
+     * Removes view that are outside of the visible part of the list. Will not
+     * remove all views.
+     * 
+     * @param offset Offset of the visible area
+     */
+    private void removeNonVisibleViews(final int offset) {
+        // We need to keep close track of the child count in this function. We
+        // should never remove all the views, because if we do, we loose track
+        // of were we are.
+        int childCount = getChildCount();
+
+        // if we are not at the bottom of the list and have more than one child
+        if (this.lastItemPosition != this.adapter.getCount() - 1 && childCount > 1) {
+            // check if we should remove any views in the top
+            View firstChild = getChildAt(0);
+            while (firstChild != null && firstChild.getBottom() + offset < 0) {
+                // remove the top view
+                removeViewInLayout(firstChild);
+                childCount--;
+                this.cachedItemViews.addLast(firstChild);
+                this.firstItemPosition++;
+
+                // update the list offset (since we've removed the top child)
+                this.listTopOffset += firstChild.getMeasuredHeight();
+
+                // Continue to check the next child only if we have more than
+                // one child left
+                if (childCount > 1) {
+                    firstChild = getChildAt(0);
+                } else {
+                    firstChild = null;
+                }
+            }
+        }
+
+        // if we are not at the top of the list and have more than one child
+        if (this.firstItemPosition != 0 && childCount > 1) {
+            // check if we should remove any views in the bottom
+            View lastChild = getChildAt(childCount - 1);
+            while (lastChild != null && lastChild.getTop() + offset > getHeight()) {
+                // remove the bottom view
+                removeViewInLayout(lastChild);
+                childCount--;
+                this.cachedItemViews.addLast(lastChild);
+                this.lastItemPosition--;
+
+                // Continue to check the next child only if we have more than
+                // one child left
+                if (childCount > 1) {
+                    lastChild = getChildAt(childCount - 1);
+                } else {
+                    lastChild = null;
+                }
+            }
+        }
+    }
+
+    /**
+     * Fills the list with child-views
+     * 
+     * @param offset Offset of the visible area
+     */
+    private void fillList(final int offset) {
+        final int bottomEdge = getChildAt(getChildCount() - 1).getBottom();
+        fillListDown(bottomEdge, offset);
+
+        final int topEdge = getChildAt(0).getTop();
+        fillListUp(topEdge, offset);
+    }
+
+    /**
+     * Starts at the bottom and adds children until we've passed the list bottom
+     * 
+     * @param bottomEdge The bottom edge of the currently last child
+     * @param offset Offset of the visible area
+     */
+    private void fillListDown(int bottomEdge, final int offset) {
+    	
+    	int viewHeight = getHeight();
+    	int itemCount = this.adapter.getCount();
+
+    	/*
+         this.columnCount = (int)Math.max(2f, (width + gutterWidth) / (columnWidth + gutterWidth));
+
+        // Determine childSize and padding, in px.
+        this.childSize = (right - left) / this.columnCount;
+        this.childSize = Math.round(this.childSize * DraggableGridView.childRatio);
+        this.padding = ((right - left) - (this.childSize * this.columnCount)) / (this.columnCount + 1);
+       for (int i = 0; i < getChildCount(); i++) {
+        	if (i != dragged)
+        	{
+	            Point xy = getCoorFromIndex(i);
+	            getChildAt(i).layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
+        	}
+        }
+*/
+    	while (bottomEdge + offset < viewHeight &&
+        	   this.lastItemPosition < itemCount - 1) {
+            this.lastItemPosition++;
+            Log.i("DraggableGridView", "ArrayAdapter class: " + this.adapter.getClass().getName());
+            Point topLeft = getCoorFromIndex(lastItemPosition);
+            final View newBottomChild = this.adapter.getView(this.lastItemPosition, getCachedView(), this);
+            // newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
+            addAndMeasureChild(newBottomChild, LAYOUT_MODE_BELOW);
+            bottomEdge = newBottomChild.getTop() + newBottomChild.getHeight();
+            //bottomEdge += newBottomChild.getMeasuredHeight();
+        }
+    }
+
+    /**
+     * Starts at the top and adds children until we've passed the list top
+     * 
+     * @param topEdge The top edge of the currently first child
+     * @param offset Offset of the visible area
+     */
+    private void fillListUp(int topEdge, final int offset) {
+        while (topEdge + offset > 0 && this.firstItemPosition > 0) {
+            this.firstItemPosition--;
+            final View newTopChild = this.adapter.getView(this.firstItemPosition, getCachedView(), this);
+            addAndMeasureChild(newTopChild, LAYOUT_MODE_ABOVE);
+            final int childHeight = newTopChild.getMeasuredHeight();
+            topEdge -= childHeight;
+
+            // update the list offset (since we added a view at the top)
+            this.listTopOffset -= childHeight;
+        }
+    }
+
     
-    //OVERRIDES
+    /**
+     * Add a view as a child and measure it.
+     *
+     * @param child The view to add
+     * @param layoutMode Either LAYOUT_MODE_ABOVE or LAYOUT_MODE_BELOW
+     */
+    private void addAndMeasureChild(final View child, final int layoutMode) {
+        LayoutParams params = child.getLayoutParams();
+        if (params == null) {
+            params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        }
+        final int index = layoutMode == LAYOUT_MODE_ABOVE ? 0 : -1;
+        addViewInLayout(child, index, params, true);
+
+        final int itemWidth = getWidth();
+        child.measure(MeasureSpec.EXACTLY | itemWidth, MeasureSpec.UNSPECIFIED);
+    }
+
     @Override
-    public void addView(View child) {
-    	super.addView(child);
-    	newPositions.add(-1);
-    };
+    public boolean onInterceptTouchEvent(final MotionEvent event) {
+    /*
+      switch (event.getAction()) {
+        case MotionEvent.ACTION_DOWN:
+          startTouch(event);
+          return false;
+     
+        case MotionEvent.ACTION_MOVE:
+          return startScrollIfNeeded(event);
+     
+        default:
+          endTouch();
+          return false;
+      }
+      */
+      return super.onInterceptTouchEvent(event);
+    }
+    /**
+     * Position the child views.
+     */
+    private void positionItems() {
+
+    	int top = 0;
+     
+    	for (int index = 0; index < getChildCount(); index++) {
+    		View child = getChildAt(index);
+     
+    		int width = child.getMeasuredWidth();
+    		int height = child.getMeasuredHeight();
+    		int left = (getWidth() - width) / 2;
+     
+    		child.layout(left, top, left + width, top + height);
+    		top += height;
+    	}
+    }
+
+    /**
+     * Allow scrolling by touching the screen.
+     */
     @Override
-    public void removeViewAt(int index) {
-    	super.removeViewAt(index);
-    	newPositions.remove(index);
-    };
+    public boolean onTouchEvent(MotionEvent event) {
+      if (getChildCount() == 0) {
+        return false;
+      }
+      switch (event.getAction()) {
+        case MotionEvent.ACTION_DOWN:
+          this.touchStartY = (int)event.getY();
+          this.listTopStart = getChildAt(0).getTop();
+          break;
+     
+        case MotionEvent.ACTION_MOVE:
+          int scrolledDistance = (int)event.getY() - this.touchStartY;
+          this.listTop = this.listTopStart + scrolledDistance;
+          requestLayout();
+          break;
+     
+        default:
+          break;
+      }
+      return true;
+    }
+    
     
     //LAYOUT
+    /*
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
     	//compute width of view, in dp
@@ -139,6 +508,19 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
 	            getChildAt(i).layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
         	}
     }
+*/
+    
+    @Override
+    public void addView(View child) {
+    	super.addView(child);
+    	newPositions.add(-1);
+    };
+    @Override
+    public void removeViewAt(int index) {
+    	super.removeViewAt(index);
+    	newPositions.remove(index);
+    };
+    
     @Override
     protected int getChildDrawingOrder(int childCount, int i) {
     	if (dragged == -1)
@@ -154,7 +536,7 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
         int col = getColOrRowFromCoor(x), row = getColOrRowFromCoor(y + scroll); 
         if (col == -1 || row == -1) //touch is between columns or rows
             return -1;
-        int index = row * colCount + col;
+        int index = row * this.columnCount + col;
         if (index >= getChildCount())
             return -1;
         return index;
@@ -197,8 +579,8 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
     }
     protected Point getCoorFromIndex(int index)
     {
-        int col = index % colCount;
-        int row = index / colCount;
+        int col = index % this.columnCount;
+        int row = index / this.columnCount;
         return new Point(padding + (childSize + padding) * col,
                          padding + (childSize + padding) * row - scroll);
     }
@@ -217,7 +599,10 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
     		if (secondaryOnClickListener != null)
     			secondaryOnClickListener.onClick(view);
     		if (onItemClickListener != null && getLastIndex() != -1)
-    			onItemClickListener.onItemClick(null, getChildAt(getLastIndex()), getLastIndex(), getLastIndex() / colCount);
+    			onItemClickListener.onItemClick(null,
+    											getChildAt(getLastIndex()),
+    											getLastIndex(),
+    											getLastIndex() / this.columnCount);
     	}
     }
     public boolean onLongClick(View view)
@@ -233,12 +618,6 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
         }
         return false;
     }
-    /*
-     * Handle touch
-     * 
-     * @return true if the event has been consumed; false otherwise
-     * @see android.view.View.OnTouchListener#onTouch(android.view.View, android.view.MotionEvent)
-     */
     public boolean onTouch(View view, MotionEvent event)
     {
         int action = event.getAction();
@@ -250,19 +629,13 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
                    touching = true;
                    break;
                case MotionEvent.ACTION_MOVE:
-             	   int delta = lastY - (int)event.getY();
+            	   int delta = lastY - (int)event.getY();
                    if (dragged != -1)
                    {
                        //change draw location of dragged visual
-                       int x = (int)event.getX();
-                       int y = (int)event.getY();
-                   	   int offset = (int)(childSize * DRAGGABLE_CELL_EXPANSION / 2);
-                       int left = x - offset;
-                       int top = y - offset;
-                       int draggableCellSize = (int)(childSize * DRAGGABLE_CELL_EXPANSION);
-                       getChildAt(dragged).layout(left, top,
-                                                  left + draggableCellSize,
-                                                  top + draggableCellSize);
+                       int x = (int)event.getX(), y = (int)event.getY();
+                       int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
+                       getChildAt(dragged).layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
                        
                        //check for new target hover
                        int target = getTargetFromCoor(x, y);
@@ -317,18 +690,10 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
     {
     	View v = getChildAt(dragged);
     	int x = getCoorFromIndex(dragged).x + childSize / 2, y = getCoorFromIndex(dragged).y + childSize / 2;
-
-        int draggableCellSize = (int)(childSize * DRAGGABLE_CELL_EXPANSION);
-    	int offset = (int)(childSize * DRAGGABLE_CELL_EXPANSION / 2);
-       	int left = x - offset;
-       	int top  = y - offset;
-    	v.layout(left, top, left + draggableCellSize, top + draggableCellSize);
+        int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
+    	v.layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
     	AnimationSet animSet = new AnimationSet(true);
-        float draggableCellExpansionInverse = 1 / DRAGGABLE_CELL_EXPANSION;
-		ScaleAnimation scale =
-			new ScaleAnimation(draggableCellExpansionInverse, 1,
-					           draggableCellExpansionInverse, 1,
-					           childSize / DRAGGABLE_CELL_EXPANSION, childSize / DRAGGABLE_CELL_EXPANSION);
+		ScaleAnimation scale = new ScaleAnimation(.667f, 1, .667f, 1, childSize * 3 / 4, childSize * 3 / 4);
 		scale.setDuration(animT);
 		AlphaAnimation alpha = new AlphaAnimation(1, .5f);
 		alpha.setDuration(animT);
@@ -456,7 +821,8 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
     }
     protected int getMaxScroll()
     {
-    	int rowCount = (int)Math.ceil((double)getChildCount()/colCount), max = rowCount * childSize + (rowCount + 1) * padding - getHeight();
+    	int rowCount = (int)Math.ceil((double)getChildCount() / this.columnCount),
+    			                      max = rowCount * childSize + (rowCount + 1) * padding - getHeight();
     	return max;
     }
     public int getLastIndex()
@@ -473,4 +839,17 @@ public class DraggableGridView extends ViewGroup implements OnTouchListener, OnC
     {
     	this.onItemClickListener = l;
     }
+
+    /**
+     * Check for a cached view that may be used.
+     * 
+     * @return A cached view or, if none was found, null
+     */
+    private View getCachedView() {
+        if (this.cachedItemViews.size() != 0) {
+            return this.cachedItemViews.removeFirst();
+        }
+        return null;
+    }
+
 }
