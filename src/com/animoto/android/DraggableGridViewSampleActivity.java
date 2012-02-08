@@ -15,16 +15,19 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.animoto.android.views.*;
@@ -57,7 +60,6 @@ public class DraggableGridViewSampleActivity extends Activity {
 
         Context context = getApplication();
 		this.gridView = (DraggableGridView)findViewById(R.id.dgv);
-        //this.gridView = new DraggableGridView(context, null);
         this.addButton = ((Button)findViewById(R.id.add_button));
         this.viewButton = ((Button)findViewById(R.id.view_button));
 
@@ -117,21 +119,24 @@ public class DraggableGridViewSampleActivity extends Activity {
 			    	.setMessage(finishedPoem).show();
 			}
 		});
+
     }
     
-    private Bitmap getThumb(String s)
+    private static Bitmap getThumb(String s)
 	{
-		Bitmap bmp = Bitmap.createBitmap(150, 150, Bitmap.Config.RGB_565);
+    	int bitmapSize = 80;
+    	int textSize = 18;
+    	Bitmap bmp = Bitmap.createBitmap(bitmapSize, bitmapSize, Bitmap.Config.RGB_565);
 		Canvas canvas = new Canvas(bmp);
 	    Paint paint = new Paint();
 	    
 	    paint.setColor(Color.rgb(random.nextInt(128), random.nextInt(128), random.nextInt(128)));
 	    paint.setTextSize(24);
 	    paint.setFlags(Paint.ANTI_ALIAS_FLAG);
-	    canvas.drawRect(new Rect(0, 0, 150, 150), paint);
+	    canvas.drawRect(new Rect(0, 0, bitmapSize, bitmapSize), paint);
 	    paint.setColor(Color.WHITE);
 	    paint.setTextAlign(Paint.Align.CENTER);
-	    canvas.drawText(s, 75, 75, paint);
+	    canvas.drawText(s, bitmapSize/2, bitmapSize/2 + textSize*2/5, paint);
 	    
 		return bmp;
 	}
@@ -162,18 +167,21 @@ public class DraggableGridViewSampleActivity extends Activity {
 
         @Override
         public View getView(final int position, final View convertView, final ViewGroup parent) {
-            View view = convertView;
-            if (view == null) {
-            	// LayoutInflater inflater = LayoutInflater.from( this.context.getApplicationContext() );
-            	LayoutInflater inflater =
-            		(LayoutInflater)this.context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                view = (View)inflater.inflate(R.layout.grid_item, null);
+
+        	ImageView imageView = (ImageView)convertView;
+
+        	if (imageView == null) {
+            	// LayoutInflater inflater =
+            	//	(LayoutInflater)this.context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                // imageView = (ImageView)inflater.inflate(R.layout.grid_item, parent);
+                String word = this.words.get(position);
+        		imageView = new ImageView(this.context);
+        		RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(80, 80);
+        		imageView.setLayoutParams(layoutParams);
+        		imageView.setImageBitmap( DraggableGridViewSampleActivity.getThumb(word) );
             }
 
-            final TextView name = (TextView)view.findViewById(R.id.grid_item_text);
-            name.setText( this.words.get(position) );
-
-           return view;
+           return imageView;
         }
     }
 }

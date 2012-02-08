@@ -16,11 +16,13 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:text="@string/button1Text"/>
+
     <Button
         android:id="@+id/view_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_toRightOf="@+id/button1"
-        android:text="@string/button2Text"/>
+        android:layout_alignParentRight="true"
+        android:text="@string/button2Text" />
+
 </RelativeLayout>
