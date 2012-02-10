@@ -4,11 +4,18 @@
     android:layout_height="fill_parent"
     >
     <com.animoto.android.views.DraggableGridView
-        android:id="@+id/dgv"
+        android:id="@+id/draggable_grid_view"
         android:layout_height="fill_parent"
         android:layout_width="fill_parent"
         android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"/>
+        android:layout_alignParentLeft="true"
+    	android:columnWidth="100dp"
+    	android:numColumns="auto_fit"
+    	android:verticalSpacing="5dp"
+    	android:horizontalSpacing="5dp"
+    	android:stretchMode="columnWidth"
+    	android:gravity="center"
+    />
     <Button
         android:id="@+id/add_button"
         android:layout_width="wrap_content"

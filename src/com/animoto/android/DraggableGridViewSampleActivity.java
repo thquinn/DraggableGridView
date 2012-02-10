@@ -59,7 +59,7 @@ public class DraggableGridViewSampleActivity extends Activity {
         setContentView(R.layout.main);
 
         Context context = getApplication();
-		this.gridView = (DraggableGridView)findViewById(R.id.dgv);
+		this.gridView = (DraggableGridView)findViewById(R.id.draggable_grid_view);
         this.addButton = ((Button)findViewById(R.id.add_button));
         this.viewButton = ((Button)findViewById(R.id.view_button));
 
@@ -70,6 +70,8 @@ public class DraggableGridViewSampleActivity extends Activity {
 
         // final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getApplication(), R.layout.grid_item);
         this.poem = new WordAdapter(this, new ArrayList<String>());
+
+        // @TODO Apparently this is supposed to be a ListAdapter, not an ArrayAdapter
         this.gridView.setAdapter(poem);
         
         setListeners();
@@ -153,6 +155,8 @@ public class DraggableGridViewSampleActivity extends Activity {
 
     	private Context context;
     	ArrayList<String> words;
+    	private int lastPosition = -1;
+
     	/**
          * Constructor
          * 
@@ -165,21 +169,29 @@ public class DraggableGridViewSampleActivity extends Activity {
             this.words = words;
         }
 
+        /**
+         * Create a view for a data item or a recycled view, if one is passed in.
+         * 
+         * @param position    The position of the item within the adapter's data set.
+         * @param convertView An old view to reuse, if possible.
+         * @param parent      The enclosing view
+         */
         @Override
         public View getView(final int position, final View convertView, final ViewGroup parent) {
 
-        	ImageView imageView = (ImageView)convertView;
+        	ImageView imageView = null;
+
+        	if (convertView instanceof ImageView) {
+        		imageView = (ImageView)convertView;
+        	}
 
         	if (imageView == null) {
-            	// LayoutInflater inflater =
-            	//	(LayoutInflater)this.context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                // imageView = (ImageView)inflater.inflate(R.layout.grid_item, parent);
-                String word = this.words.get(position);
         		imageView = new ImageView(this.context);
-        		RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(80, 80);
-        		imageView.setLayoutParams(layoutParams);
-        		imageView.setImageBitmap( DraggableGridViewSampleActivity.getThumb(word) );
-            }
+        		imageView.setLayoutParams(new GridView.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                String word = this.words.get(position);
+            	imageView.setImageBitmap( DraggableGridViewSampleActivity.getThumb(word) );
+        	}
 
            return imageView;
         }

@@ -33,8 +33,10 @@ import android.view.View.OnTouchListener;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Adapter;
 import android.widget.AdapterView;
+import android.widget.GridView;
 import android.widget.ImageView;
 
 
@@ -67,6 +69,7 @@ public class DraggableGridView extends AdapterView
 	private Adapter adapter; 
 
 	// Layout
+	// Size of grid cell relative to grid cell plus spacing.
 	public static float childRatio = .9f;
     protected int columnCount;
     protected int childSize;
@@ -103,7 +106,7 @@ public class DraggableGridView extends AdapterView
     protected boolean enabled = true, touching = false;
 
     // Animation
-    public static int animT = 150;
+    public static int animT = 25;
     protected ArrayList<Integer> newPositions = new ArrayList<Integer>();
    
     // Listeners
@@ -176,14 +179,14 @@ public class DraggableGridView extends AdapterView
      */
     @Override
     public void setAdapter(Adapter adapter) {
-      this.adapter = adapter;
-      removeAllViewsInLayout();
-      requestLayout();
+    	this.adapter = adapter;
+    	removeAllViewsInLayout();
+    	requestLayout();
     }
    
     @Override
     public Adapter getAdapter() {
-      return this.adapter;
+    	return this.adapter;
     }
    
     @Override
@@ -212,10 +215,15 @@ public class DraggableGridView extends AdapterView
 
     	super.onLayout(changed, left, top, right, bottom);
 
+        // if we don't have an adapter, we don't need to do anything
+    	if (this.adapter == null) {
+    		return;
+    	}
+
     	// Compute width of view.
         float width = (right - left) / (this.dpi / 160f);
 
-/*
+/********
         float w = width;
         int colCount = 2;
         int sub = 240;
@@ -226,34 +234,42 @@ public class DraggableGridView extends AdapterView
         	w -= sub;
         	sub += 40;
         }
-*/
+**********/
         // Determine number of columns (at least 2).
-        int columnWidth = 100;
-        int gutterWidth = 10;
-        this.columnCount = (int)Math.max(2f, (width + gutterWidth) / (columnWidth + gutterWidth));
+        int initialColumnWidth = 95;
+        int initialGutterWidth = 5;
+        this.columnCount = (int)Math.max(2f, (width + initialGutterWidth) / (initialColumnWidth + initialGutterWidth));
 
         // Determine childSize and padding, in px.
         this.childSize = (right - left) / this.columnCount;
         this.childSize = Math.round(this.childSize * DraggableGridView.childRatio);
         this.padding = ((right - left) - (this.childSize * this.columnCount)) / (this.columnCount + 1);
-/*
-        for (int i = 0; i < getChildCount(); i++) {
-        	if (i != dragged)
-        	{
-	            Point xy = getCoorFromIndex(i);
-	            getChildAt(i).layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
-        	}
-        }
-*/
-        // if we don't have an adapter, we don't need to do anything
-    	if (this.adapter == null) {
-    		return;
+
+        /*
+        int childLeft = left;
+        int childRight = left + this.childSize;
+        int childTop = top;
+        int childBottom = top + this.childSize;
+        int childAndGutterSize = this.childSize + gutterWidth;
+        int itemCount = adapter.getCount();
+
+        for (int i = 0; i < this.adapter.getCount(); i++) {
+    	    View child = obtainView(i);
+    	    childLeft = left + (i % columnCount) * childAndGutterSize;
+    	    childRight = childLeft + this.childSize;
+    	    childTop = top + (i / columnCount) * childAndGutterSize;
+    	    childBottom = childTop + this.childSize;
+    	    child.layout(childLeft, childTop, childRight, childBottom);
+    	    addViewInLayout(child, i, child.getLayoutParams(), true);
     	}
+  	    this.invalidate();
+  	    */
 
     	// Add child views if we don't have any yet.
     	if (getChildCount() == 0) {
+    		int offsetFromTop = 0;
     		this.lastItemPosition = -1;
-            fillListDown(this.listTop, 0);
+            fillListDown(this.listTop, offsetFromTop);
         }
     	else {
             final int offset = this.listTop + this.listTopOffset - getChildAt(0).getTop();
@@ -264,7 +280,11 @@ public class DraggableGridView extends AdapterView
     	positionItems();
     	invalidate();
     }
-
+  
+     protected View obtainView(int position) {
+    	View child = this.adapter.getView(position, null, this);
+    	return child;
+	}
 
     /**
      * Removes view that are outside of the visible part of the list. Will not
@@ -338,41 +358,24 @@ public class DraggableGridView extends AdapterView
     }
 
     /**
-     * Starts at the bottom and adds children until we've passed the list bottom
+     * Starts at the top and adds children until we've passed the list bottom
      * 
      * @param bottomEdge The bottom edge of the currently last child
-     * @param offset Offset of the visible area
+     * @param offset Distance of the visible area from the top of the grid
      */
     private void fillListDown(int bottomEdge, final int offset) {
     	
     	int viewHeight = getHeight();
     	int itemCount = this.adapter.getCount();
 
-    	/*
-         this.columnCount = (int)Math.max(2f, (width + gutterWidth) / (columnWidth + gutterWidth));
-
-        // Determine childSize and padding, in px.
-        this.childSize = (right - left) / this.columnCount;
-        this.childSize = Math.round(this.childSize * DraggableGridView.childRatio);
-        this.padding = ((right - left) - (this.childSize * this.columnCount)) / (this.columnCount + 1);
-       for (int i = 0; i < getChildCount(); i++) {
-        	if (i != dragged)
-        	{
-	            Point xy = getCoorFromIndex(i);
-	            getChildAt(i).layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
-        	}
-        }
-*/
-    	while (bottomEdge + offset < viewHeight &&
+  	    while (bottomEdge + offset < viewHeight &&
         	   this.lastItemPosition < itemCount - 1) {
             this.lastItemPosition++;
-            Log.i("DraggableGridView", "ArrayAdapter class: " + this.adapter.getClass().getName());
-            Point topLeft = getCoorFromIndex(lastItemPosition);
+            Point topLeft = getCoordinatesFromIndex(lastItemPosition);
             final View newBottomChild = this.adapter.getView(this.lastItemPosition, getCachedView(), this);
-            // newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
             addAndMeasureChild(newBottomChild, LAYOUT_MODE_BELOW);
+            newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
             bottomEdge = newBottomChild.getTop() + newBottomChild.getHeight();
-            //bottomEdge += newBottomChild.getMeasuredHeight();
         }
     }
 
@@ -403,15 +406,17 @@ public class DraggableGridView extends AdapterView
      * @param layoutMode Either LAYOUT_MODE_ABOVE or LAYOUT_MODE_BELOW
      */
     private void addAndMeasureChild(final View child, final int layoutMode) {
-        LayoutParams params = child.getLayoutParams();
+
+    	ViewGroup.LayoutParams params = child.getLayoutParams();
         if (params == null) {
             params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         }
         final int index = layoutMode == LAYOUT_MODE_ABOVE ? 0 : -1;
         addViewInLayout(child, index, params, true);
 
-        final int itemWidth = getWidth();
-        child.measure(MeasureSpec.EXACTLY | itemWidth, MeasureSpec.UNSPECIFIED);
+        // final int itemWidth = getWidth();
+        // child.measure(MeasureSpec.EXACTLY | itemWidth, MeasureSpec.UNSPECIFIED);
+        child.measure(this.childSize, this.childSize);
     }
 
     @Override
@@ -432,6 +437,7 @@ public class DraggableGridView extends AdapterView
       */
       return super.onInterceptTouchEvent(event);
     }
+    
     /**
      * Position the child views.
      */
@@ -441,16 +447,17 @@ public class DraggableGridView extends AdapterView
      
     	for (int index = 0; index < getChildCount(); index++) {
     		View child = getChildAt(index);
+    		Point topLeft = getCoordinatesFromIndex(index);
      
-    		int width = child.getMeasuredWidth();
-    		int height = child.getMeasuredHeight();
-    		int left = (getWidth() - width) / 2;
-     
-    		child.layout(left, top, left + width, top + height);
-    		top += height;
+    		// int width = child.getMeasuredWidth();
+    		// int height = child.getMeasuredHeight();
+
+    		child.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + this.childSize);
+    		top += this.childSize;
     	}
     }
 
+    
     /**
      * Allow scrolling by touching the screen.
      */
@@ -577,13 +584,22 @@ public class DraggableGridView extends AdapterView
         //Toast.makeText(getContext(), "Target: " + target + ".", Toast.LENGTH_SHORT).show();
         return target;
     }
-    protected Point getCoorFromIndex(int index)
+    
+    
+    /**
+     * Get the position of a view based on its array index.
+     * 
+     * @return top left position
+     */
+    protected Point getCoordinatesFromIndex(int index)
     {
-        int col = index % this.columnCount;
-        int row = index / this.columnCount;
-        return new Point(padding + (childSize + padding) * col,
-                         padding + (childSize + padding) * row - scroll);
+        int column = index % this.columnCount;
+        int row    = index / this.columnCount;
+        return new Point(padding + (this.childSize + padding) * column,
+                         padding + (this.childSize + padding) * row - scroll);
     }
+    
+    
     public int getIndexOf(View child)
     {
     	for (int i = 0; i < getChildCount(); i++)
@@ -668,7 +684,7 @@ public class DraggableGridView extends AdapterView
                            reorderChildren();
                        else
                        {
-                           Point xy = getCoorFromIndex(dragged);
+                           Point xy = getCoordinatesFromIndex(dragged);
                            v.layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
                        }
                        v.clearAnimation();
@@ -689,7 +705,7 @@ public class DraggableGridView extends AdapterView
     protected void animateDragged()
     {
     	View v = getChildAt(dragged);
-    	int x = getCoorFromIndex(dragged).x + childSize / 2, y = getCoorFromIndex(dragged).y + childSize / 2;
+    	int x = getCoordinatesFromIndex(dragged).x + childSize / 2, y = getCoordinatesFromIndex(dragged).y + childSize / 2;
         int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
     	v.layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
     	AnimationSet animSet = new AnimationSet(true);
@@ -726,8 +742,8 @@ public class DraggableGridView extends AdapterView
     		if (oldPos == newPos)
     			continue;
     		
-    		Point oldXY = getCoorFromIndex(oldPos);
-    		Point newXY = getCoorFromIndex(newPos);
+    		Point oldXY = getCoordinatesFromIndex(oldPos);
+    		Point newXY = getCoordinatesFromIndex(newPos);
     		Point oldOffset = new Point(oldXY.x - v.getLeft(), oldXY.y - v.getTop());
     		Point newOffset = new Point(newXY.x - v.getLeft(), newXY.y - v.getTop());
     		
