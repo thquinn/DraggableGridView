@@ -16,20 +16,33 @@
     	android:stretchMode="columnWidth"
     	android:gravity="center"
     />
-    <Button
-        android:id="@+id/add_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentLeft="true"
-        android:text="@string/button1Text"/>
-
-    <Button
-        android:id="@+id/view_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:text="@string/button2Text" />
-
+	<TableLayout
+	    android:orientation="horizontal"
+	    android:layout_alignParentBottom="true"
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:stretchColumns="1">
+	    <TableRow>
+    	    <Button
+    	    	android:layout_column="1"
+	        	android:id="@+id/add_button"
+	        	android:layout_height="wrap_content"
+	        	android:layout_weight="10"
+	        	android:text="@string/addButtonText"/>
+	    	<Button
+    	    	android:layout_column="2"
+		        android:id="@+id/clear_button"
+		        android:layout_width="48pt"
+		        android:layout_height="wrap_content"
+		        android:text="@string/clearButtonText"
+		        android:layout_weight="60"/>
+	    	<Button
+    	    	android:layout_column="3"
+		        android:id="@+id/view_button"
+		        android:layout_width="48pt"
+		        android:layout_height="wrap_content"
+		        android:text="@string/viewButtonText"
+		        android:layout_weight="50"/>
+    	</TableRow>
+	 </TableLayout>
 </RelativeLayout>

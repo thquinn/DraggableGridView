@@ -8,15 +8,12 @@ import java.util.Random;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
-import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.View.OnClickListener;
@@ -27,8 +24,6 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
 
 import com.animoto.android.views.*;
 // import com.sonyericsson.tutorial.list1.MyListView;
@@ -40,6 +35,7 @@ public class DraggableGridViewSampleActivity extends Activity {
 	static Random random = new Random();
 	private DraggableGridView gridView;
 	private Button addButton;
+	private Button clearButton;
 	private Button viewButton;
 	// ArrayList<String> poem = new ArrayList<String>();
 	WordAdapter poem;
@@ -61,6 +57,7 @@ public class DraggableGridViewSampleActivity extends Activity {
         Context context = getApplication();
 		this.gridView = (DraggableGridView)findViewById(R.id.draggable_grid_view);
         this.addButton = ((Button)findViewById(R.id.add_button));
+        this.clearButton = ((Button)findViewById(R.id.clear_button));
         this.viewButton = ((Button)findViewById(R.id.view_button));
 
         String wordsString = getApplication().getString(R.string.words);
@@ -110,6 +107,15 @@ public class DraggableGridViewSampleActivity extends Activity {
 			}
 		});
 
+    	this.clearButton.setOnClickListener(new OnClickListener() {
+			public void onClick(View arg0) {
+				poem.clear();
+				// poem.notifyDataSetChanged();
+				gridView.removeAllViewsInLayout();
+				gridView.requestLayout();
+			}
+		});
+
     	this.viewButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View arg0) {
 				String finishedPoem = "";
@@ -155,7 +161,7 @@ public class DraggableGridViewSampleActivity extends Activity {
 
     	private Context context;
     	ArrayList<String> words;
-    	private int lastPosition = -1;
+    	// private int lastPosition = -1;
 
     	/**
          * Constructor
