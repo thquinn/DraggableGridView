@@ -5,7 +5,6 @@
  * http://blogs.sonyericsson.com/wp/2010/05/20/android-tutorial-making-your-own-3d-list-part-1/
  * 
  * TO DO:
- * Improve timer performance (especially on Eee Pad)
  * Improve child rearranging
  */
 package com.animoto.android.views;
@@ -33,11 +32,13 @@ import android.view.View.OnTouchListener;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.AdapterView.OnItemLongClickListener;
 
 
 public class DraggableGridView extends AdapterView
@@ -63,6 +64,9 @@ public class DraggableGridView extends AdapterView
     /** User is scrolling the list */
     private static final int TOUCH_STATE_SCROLL = 2;
 
+    /** Current touch state */
+    private int touchState = TOUCH_STATE_RESTING;
+
     /**
 	 * Adapter with all the data.
 	 */
@@ -80,6 +84,7 @@ public class DraggableGridView extends AdapterView
     protected Handler handler = new Handler();
 
     // Scrolling
+    protected int touchStartX;
     protected int touchStartY;
     protected int listTopStart;
     protected int listTop;
@@ -188,7 +193,13 @@ public class DraggableGridView extends AdapterView
     public Adapter getAdapter() {
     	return this.adapter;
     }
-   
+
+    @Override
+    public void removeAllViewsInLayout() {
+    	super.removeAllViewsInLayout();
+    	this.listTop = 0;
+    }
+    
     @Override
     public void setSelection(int position) {
       throw new UnsupportedOperationException("Not supported");
@@ -273,6 +284,8 @@ public class DraggableGridView extends AdapterView
         }
     	else {
             final int offset = this.listTop + this.listTopOffset - getChildAt(0).getTop();
+    		Log.i("DraggableGridView", "listTop: " + this.listTop + " listTopOffset: " + listTopOffset +
+    			  " listTopOffset: " + this.listTopOffset + " offset: " + offset);
             removeNonVisibleViews(offset);
             fillList(offset);
         }
@@ -281,10 +294,229 @@ public class DraggableGridView extends AdapterView
     	invalidate();
     }
   
-     protected View obtainView(int position) {
+
+    /**
+     * Fills the list with child-views
+     * 
+     * @param offset Offset of the visible area
+     */
+    private void fillList(final int offset) {
+        final int bottomEdge = getChildAt(getChildCount() - 1).getBottom();
+        fillListDown(bottomEdge, offset);
+
+        final int topEdge = getChildAt(0).getTop();
+        fillListUp(topEdge, offset);
+    }
+
+
+    /**
+     * Starts at the top and adds children until we've passed the list bottom
+     * 
+     * @param bottomEdge The bottom edge of the currently last child
+     * @param offset Distance of the visible area from the top of the grid
+     */
+    private void fillListDown(int bottomEdge, final int offset) {
+    	
+    	int viewHeight = getHeight();
+    	int itemCount = this.adapter.getCount();
+
+  	    while (bottomEdge + offset < viewHeight && this.lastItemPosition < itemCount - 1) {
+            this.lastItemPosition++;
+            //Point topLeft = getCoordinatesFromIndex(lastItemPosition);
+            final View newBottomChild = this.adapter.getView(this.lastItemPosition, getCachedView(), this);
+            addAndMeasureChild(newBottomChild, LAYOUT_MODE_BELOW);
+            //newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
+            bottomEdge = newBottomChild.getTop() + newBottomChild.getHeight();
+        }
+    }
+
+    /**
+     * Starts at the top and adds children until we've passed the list top
+     * 
+     * @param topEdge The top edge of the currently first child
+     * @param offset Offset of the visible area
+     */
+    private void fillListUp(int topEdge, final int offset) {
+        while (topEdge + offset > 0 && this.firstItemPosition > 0) {
+            this.firstItemPosition--;
+            final View newTopChild = this.adapter.getView(this.firstItemPosition, getCachedView(), this);
+            addAndMeasureChild(newTopChild, LAYOUT_MODE_ABOVE);
+            final int childHeight = newTopChild.getMeasuredHeight();
+            topEdge -= childHeight;
+
+            // update the list offset (since we added a view at the top)
+            this.listTopOffset -= childHeight;
+        }
+    }
+
+    
+    /**
+     * Add a view as a child and measure it.
+     *
+     * @param child The view to add
+     * @param layoutMode Either LAYOUT_MODE_ABOVE or LAYOUT_MODE_BELOW
+     */
+    private void addAndMeasureChild(final View child, final int layoutMode) {
+
+    	ViewGroup.LayoutParams params = child.getLayoutParams();
+        if (params == null) {
+            params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        }
+        final int index = layoutMode == LAYOUT_MODE_ABOVE ? 0 : -1;
+        addViewInLayout(child, index, params, true);
+
+        // final int itemWidth = getWidth();
+        // child.measure(MeasureSpec.EXACTLY | itemWidth, MeasureSpec.UNSPECIFIED);
+        child.measure(this.childSize, this.childSize);
+    }
+
+   
+    protected View obtainView(int position) {
     	View child = this.adapter.getView(position, null, this);
     	return child;
 	}
+
+    /**
+     * Sets and initializes all things that need to when we start a touch
+     * gesture.
+     * 
+     * @param event The down event
+     */
+    private void startTouch(final MotionEvent event) {
+        // save the start place
+        this.touchStartX = (int)event.getX();
+        this.touchStartY = (int)event.getY();
+        this.listTopStart = getChildAt(0).getTop() - this.listTopOffset;
+
+        // start checking for a long press
+        startLongPressCheck();
+
+        // we don't know if it's a click or a scroll yet, but until we know
+        // assume it's a click
+        this.touchState = TOUCH_STATE_CLICK;
+    }
+
+    /**
+     * Resets and recycles all things that need to when we end a touch gesture
+     */
+    private void endTouch() {
+        // remove any existing check for longpress
+        removeCallbacks(this.longPressRunnable);
+
+        // reset touch state
+        this.touchState = TOUCH_STATE_RESTING;
+    }
+
+    /**
+     * Scrolls the list. Takes care of updating rotation (if enabled) and
+     * snapping
+     * 
+     * @param scrolledDistance The distance to scroll
+     */
+    private void scrollList(final int scrolledDistance) {
+        this.listTop = this.listTopStart + scrolledDistance;
+        requestLayout();
+    }
+
+
+    /**
+     * Posts (and creates if necessary) a runnable that will when executed call
+     * the long click listener
+     */
+    private void startLongPressCheck() {
+        // create the runnable if we haven't already
+        if (this.longPressRunnable == null) {
+            this.longPressRunnable = new Runnable() {
+                public void run() {
+                    if (DraggableGridView.this.touchState == TOUCH_STATE_CLICK) {
+                        final int index = getContainingChildIndex(DraggableGridView.this.touchStartX,
+                        										  DraggableGridView.this.touchStartY);
+                        if (index != INVALID_INDEX) {
+                            longClickChild(index);
+                        }
+                    }
+                }
+            };
+        }
+
+        // then post it with a delay
+        postDelayed(this.longPressRunnable, ViewConfiguration.getLongPressTimeout());
+    }
+
+    /**
+     * Checks if the user has moved far enough for this to be a scroll and if
+     * so, sets the list in scroll mode
+     * 
+     * @param event The (move) event
+     * @return true if scroll was started, false otherwise
+     */
+    private boolean startScrollIfNeeded(final MotionEvent event) {
+        final int xPos = (int)event.getX();
+        final int yPos = (int)event.getY();
+        if (xPos < this.touchStartX - TOUCH_SCROLL_THRESHOLD
+                || xPos > this.touchStartX + TOUCH_SCROLL_THRESHOLD
+                || yPos < this.touchStartY - TOUCH_SCROLL_THRESHOLD
+                || yPos > this.touchStartY + TOUCH_SCROLL_THRESHOLD) {
+            // we've moved far enough for this to be a scroll
+            removeCallbacks(this.longPressRunnable);
+            this.touchState = TOUCH_STATE_SCROLL;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns the index of the child that contains the coordinates given.
+     * 
+     * @param x X-coordinate
+     * @param y Y-coordinate
+     * @return The index of the child that contains the coordinates. If no child
+     *         is found then it returns INVALID_INDEX
+     */
+    private int getContainingChildIndex(final int x, final int y) {
+        if (this.rectangle == null) {
+            this.rectangle = new Rect();
+        }
+        for (int index = 0; index < getChildCount(); index++) {
+            getChildAt(index).getHitRect(this.rectangle);
+            if (this.rectangle.contains(x, y)) {
+                return index;
+            }
+        }
+        return INVALID_INDEX;
+    }
+
+    /**
+     * Calls the item click listener for the child with at the specified
+     * coordinates
+     * 
+     * @param x The x-coordinate
+     * @param y The y-coordinate
+     */
+    private void clickChildAt(final int x, final int y) {
+        final int index = getContainingChildIndex(x, y);
+        if (index != INVALID_INDEX) {
+            final View itemView = getChildAt(index);
+            final int position = this.firstItemPosition + index;
+            final long id = this.adapter.getItemId(position);
+            performItemClick(itemView, position, id);
+        }
+    }
+
+    /**
+     * Calls the item long click listener for the child with the specified index
+     * 
+     * @param index Child index
+     */
+    private void longClickChild(final int index) {
+        final View itemView = getChildAt(index);
+        final int position = this.firstItemPosition + index;
+        final long id = this.adapter.getItemId(position);
+        final OnItemLongClickListener listener = getOnItemLongClickListener();
+        if (listener != null) {
+            listener.onItemLongClick(this, itemView, position, id);
+        }
+    }
 
     /**
      * Removes view that are outside of the visible part of the list. Will not
@@ -344,98 +576,22 @@ public class DraggableGridView extends AdapterView
         }
     }
 
-    /**
-     * Fills the list with child-views
-     * 
-     * @param offset Offset of the visible area
-     */
-    private void fillList(final int offset) {
-        final int bottomEdge = getChildAt(getChildCount() - 1).getBottom();
-        fillListDown(bottomEdge, offset);
-
-        final int topEdge = getChildAt(0).getTop();
-        fillListUp(topEdge, offset);
-    }
-
-    /**
-     * Starts at the top and adds children until we've passed the list bottom
-     * 
-     * @param bottomEdge The bottom edge of the currently last child
-     * @param offset Distance of the visible area from the top of the grid
-     */
-    private void fillListDown(int bottomEdge, final int offset) {
-    	
-    	int viewHeight = getHeight();
-    	int itemCount = this.adapter.getCount();
-
-  	    while (bottomEdge + offset < viewHeight &&
-        	   this.lastItemPosition < itemCount - 1) {
-            this.lastItemPosition++;
-            Point topLeft = getCoordinatesFromIndex(lastItemPosition);
-            final View newBottomChild = this.adapter.getView(this.lastItemPosition, getCachedView(), this);
-            addAndMeasureChild(newBottomChild, LAYOUT_MODE_BELOW);
-            newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
-            bottomEdge = newBottomChild.getTop() + newBottomChild.getHeight();
-        }
-    }
-
-    /**
-     * Starts at the top and adds children until we've passed the list top
-     * 
-     * @param topEdge The top edge of the currently first child
-     * @param offset Offset of the visible area
-     */
-    private void fillListUp(int topEdge, final int offset) {
-        while (topEdge + offset > 0 && this.firstItemPosition > 0) {
-            this.firstItemPosition--;
-            final View newTopChild = this.adapter.getView(this.firstItemPosition, getCachedView(), this);
-            addAndMeasureChild(newTopChild, LAYOUT_MODE_ABOVE);
-            final int childHeight = newTopChild.getMeasuredHeight();
-            topEdge -= childHeight;
-
-            // update the list offset (since we added a view at the top)
-            this.listTopOffset -= childHeight;
-        }
-    }
-
-    
-    /**
-     * Add a view as a child and measure it.
-     *
-     * @param child The view to add
-     * @param layoutMode Either LAYOUT_MODE_ABOVE or LAYOUT_MODE_BELOW
-     */
-    private void addAndMeasureChild(final View child, final int layoutMode) {
-
-    	ViewGroup.LayoutParams params = child.getLayoutParams();
-        if (params == null) {
-            params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-        }
-        final int index = layoutMode == LAYOUT_MODE_ABOVE ? 0 : -1;
-        addViewInLayout(child, index, params, true);
-
-        // final int itemWidth = getWidth();
-        // child.measure(MeasureSpec.EXACTLY | itemWidth, MeasureSpec.UNSPECIFIED);
-        child.measure(this.childSize, this.childSize);
-    }
-
     @Override
     public boolean onInterceptTouchEvent(final MotionEvent event) {
-    /*
+
       switch (event.getAction()) {
         case MotionEvent.ACTION_DOWN:
           startTouch(event);
           return false;
      
         case MotionEvent.ACTION_MOVE:
-          return startScrollIfNeeded(event);
+        	Log.i("DraggableGridView", "calling startScrollIfNeeded");
+        	return startScrollIfNeeded(event);
      
         default:
           endTouch();
           return false;
       }
-      */
-      return super.onInterceptTouchEvent(event);
     }
     
     /**
@@ -443,7 +599,7 @@ public class DraggableGridView extends AdapterView
      */
     private void positionItems() {
 
-    	int top = 0;
+    	//int top = this.listTop + this.listTopOffset;
      
     	for (int index = 0; index < getChildCount(); index++) {
     		View child = getChildAt(index);
@@ -453,7 +609,8 @@ public class DraggableGridView extends AdapterView
     		// int height = child.getMeasuredHeight();
 
     		child.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + this.childSize);
-    		top += this.childSize;
+    		////top += this.childSize;
+    		//top += this.childSize + this.padding;
     	}
     }
 
@@ -468,22 +625,39 @@ public class DraggableGridView extends AdapterView
       }
       switch (event.getAction()) {
         case MotionEvent.ACTION_DOWN:
-          this.touchStartY = (int)event.getY();
-          this.listTopStart = getChildAt(0).getTop();
+          //this.touchStartY = (int)event.getY();
+          //this.listTopStart = getChildAt(0).getTop();
+          startTouch(event);
           break;
      
         case MotionEvent.ACTION_MOVE:
-          int scrolledDistance = (int)event.getY() - this.touchStartY;
-          this.listTop = this.listTopStart + scrolledDistance;
-          requestLayout();
+            if (this.touchState == TOUCH_STATE_CLICK) {
+                startScrollIfNeeded(event);
+            }
+            if (this.touchState == TOUCH_STATE_SCROLL) {
+            	int scrolledDistance = (int)event.getY() - this.touchStartY;
+            	Log.i("DraggableGridView", "event.getY: " + event.getY() + " touchStartY: " + this.touchStartY + " scrolledDistance: " + scrolledDistance);
+            	scrollList(scrolledDistance);
+            }
+//          int scrolledDistance = (int)event.getY() - this.touchStartY;
+//          this.listTop = this.listTopStart + scrolledDistance;
+//          Log.e("DraggableGridView", "onTouchEvent ACTION_MOVE listTop: " + this.listTop +
+//        		" scrolledDistance " + scrolledDistance);
+//          requestLayout();
           break;
      
+        case MotionEvent.ACTION_UP:
+            if (this.touchState == TOUCH_STATE_CLICK) {
+                clickChildAt((int)event.getX(), (int)event.getY());
+            }
+            endTouch();
+            break;
+
         default:
           break;
       }
       return true;
-    }
-    
+    }    
     
     //LAYOUT
     /*
@@ -595,8 +769,12 @@ public class DraggableGridView extends AdapterView
     {
         int column = index % this.columnCount;
         int row    = index / this.columnCount;
-        return new Point(padding + (this.childSize + padding) * column,
-                         padding + (this.childSize + padding) * row - scroll);
+        int x      = padding + (this.childSize + padding) * column;
+        int y      = padding + (this.childSize + padding) * row + /*this.scroll*/ this.listTop;
+        // ("DraggableGridView", "childSize: " + this.childSize + " padding: " + padding + " row: " + row);
+        // Log.i("DraggableGridView", "padding + (childSize + padding) * row: " + (padding + (this.childSize + padding) * row));
+        Log.i("DraggableGridView", "listTop: " + this.listTop + " y: " + y);
+        return new Point(x, y);
     }
     
     
@@ -634,8 +812,10 @@ public class DraggableGridView extends AdapterView
         }
         return false;
     }
+
     public boolean onTouch(View view, MotionEvent event)
     {
+/*    	
         int action = event.getAction();
            switch (action & MotionEvent.ACTION_MASK) {
                case MotionEvent.ACTION_DOWN:
@@ -696,11 +876,12 @@ public class DraggableGridView extends AdapterView
                    touching = false;
                    break;
            }
+*/
         if (dragged != -1)
         	return true;
         return false;
     }
-    
+
     //EVENT HELPERS
     protected void animateDragged()
     {
@@ -722,6 +903,8 @@ public class DraggableGridView extends AdapterView
 		v.clearAnimation();
 		v.startAnimation(animSet);
     }
+
+
     protected void animateGap(int target)
     {
     	for (int i = 0; i < getChildCount(); i++)
