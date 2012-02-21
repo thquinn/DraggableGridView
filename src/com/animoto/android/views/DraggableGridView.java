@@ -27,6 +27,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View.OnTouchListener;
 import android.view.View.OnClickListener;
@@ -34,6 +35,7 @@ import android.view.View.OnLongClickListener;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.GridView;
@@ -81,13 +83,20 @@ public class DraggableGridView extends AdapterView
     protected int dpi;
     protected int scroll = 0;
     protected float lastDelta = 0;
+    protected float lastScrollChange = 0;
     protected Handler handler = new Handler();
 
     // Scrolling
     protected int touchStartX;
     protected int touchStartY;
+
+    // The top of the first item when the touch down event was received
     protected int listTopStart;
+
+    // The top of the first item
     protected int listTop;
+
+    // The distance from the top of the first visible item to the top of the first item
     protected int listTopOffset;
 
     /** The adapter position of the first visible item */
@@ -284,8 +293,8 @@ public class DraggableGridView extends AdapterView
         }
     	else {
             final int offset = this.listTop + this.listTopOffset - getChildAt(0).getTop();
-    		Log.i("DraggableGridView", "listTop: " + this.listTop + " listTopOffset: " + listTopOffset +
-    			  " listTopOffset: " + this.listTopOffset + " offset: " + offset);
+    		Log.i("DraggableGridView", "listTop: " + this.listTop +
+    			  " listTopOffset: " + listTopOffset + " offset: " + offset);
             removeNonVisibleViews(offset);
             fillList(offset);
         }
@@ -650,7 +659,12 @@ public class DraggableGridView extends AdapterView
             if (this.touchState == TOUCH_STATE_CLICK) {
                 clickChildAt((int)event.getX(), (int)event.getY());
             }
-            endTouch();
+            else if (this.touchState == TOUCH_STATE_SCROLL) {
+            	checkIfScrolledTooFar();
+            }
+            else {
+            	endTouch();
+            }
             break;
 
         default:
@@ -813,6 +827,63 @@ public class DraggableGridView extends AdapterView
         return false;
     }
 
+    
+    public void checkIfScrolledTooFar() {
+
+    	while (this.listTop > 0) {
+    		this.lastScrollChange = 0.1f * this.listTop;
+    		this.listTop = (int)(this.listTop - lastScrollChange);
+    		Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
+    		if ( Math.abs(this.lastScrollChange) < 0.5f) {
+    			this.lastScrollChange = 0;
+    			this.listTop = 0;
+    		}
+    		requestLayout();
+    	}
+
+    	int rows = getChildCount() / this.columnCount +
+    			   getChildCount() % this.columnCount > 0 ? 1 : 0;
+    	int listDepth = rows * (padding + this.childSize);
+    	WindowManager windowManager = (WindowManager)getContext().getSystemService(Context.WINDOW_SERVICE);
+    	Display display = windowManager.getDefaultDisplay();
+    	int screenHeight = display.getHeight();
+
+    	int minimumListTop = 0;
+    	
+    	if (listDepth > screenHeight) {
+    		minimumListTop = 0 - (listDepth - screenHeight);
+    	}
+    	else {
+    		minimumListTop = 0;
+    	}
+
+    	while (this.listTop < minimumListTop) {
+    		this.lastScrollChange = 0.1f * Math.abs(minimumListTop - this.listTop);
+    		Log.i("DraggableGridView", "lastScrollChange: " + lastScrollChange);
+    		this.listTop = (int)(this.listTop + lastScrollChange);
+    		Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
+    		if (Math.abs(this.lastScrollChange) < 0.5f) {
+    			this.lastScrollChange = 0;
+    			this.listTop = 0;
+    		}
+    		requestLayout();
+    	}
+/*
+    	if (lastDelta != 0 && !touching)
+        {
+        	scroll += lastDelta;
+        	lastDelta *= .9;
+        	if (Math.abs(lastDelta) < .25)
+        		lastDelta = 0;
+        }
+        clampScroll();
+        onLayout(true, getLeft(), getTop(), getRight(), getBottom());
+    
+        handler.postDelayed(this, 25);
+*/
+    }
+
+    
     public boolean onTouch(View view, MotionEvent event)
     {
 /*    	
