@@ -293,14 +293,13 @@ public class DraggableGridView extends AdapterView
         }
     	else {
             final int offset = this.listTop + this.listTopOffset - getChildAt(0).getTop();
-    		Log.i("DraggableGridView", "listTop: " + this.listTop +
-    			  " listTopOffset: " + listTopOffset + " offset: " + offset);
+    		// Log.i("DraggableGridView", "listTop: " + this.listTop + " listTopOffset: " + listTopOffset + " offset: " + offset);
             removeNonVisibleViews(offset);
             fillList(offset);
         }
     	// Position the views.
     	positionItems();
-    	invalidate();
+    	//invalidate();
     }
   
 
@@ -329,12 +328,15 @@ public class DraggableGridView extends AdapterView
     	int viewHeight = getHeight();
     	int itemCount = this.adapter.getCount();
 
-  	    while (bottomEdge + offset < viewHeight && this.lastItemPosition < itemCount - 1) {
+    	// If we have not yet filled in the grid, because we have more items left to display
+    	// and the bottom of the first item in the row is above the bottom of the screen...
+  	    while ( (bottomEdge + offset < viewHeight || (this.lastItemPosition + 1) % this.columnCount > 0) &&
+  	    		this.lastItemPosition < itemCount - 1) {
             this.lastItemPosition++;
-            //Point topLeft = getCoordinatesFromIndex(lastItemPosition);
+            Point topLeft = getCoordinatesFromIndex(lastItemPosition);
             final View newBottomChild = this.adapter.getView(this.lastItemPosition, getCachedView(), this);
             addAndMeasureChild(newBottomChild, LAYOUT_MODE_BELOW);
-            //newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
+            newBottomChild.layout(topLeft.x, topLeft.y, topLeft.x + this.childSize, topLeft.y + childSize);
             bottomEdge = newBottomChild.getTop() + newBottomChild.getHeight();
         }
     }
@@ -539,15 +541,20 @@ public class DraggableGridView extends AdapterView
         // of were we are.
         int childCount = getChildCount();
 
-        // if we are not at the bottom of the list and have more than one child
+        // If we are not at the bottom of the list and have more than one child,
+        // Log.i("DraggableGridView", "lastItemPosition: " + this.lastItemPosition + " adapter count: " + this.adapter.getCount() + " childCount: " + childCount);
         if (this.lastItemPosition != this.adapter.getCount() - 1 && childCount > 1) {
-            // check if we should remove any views in the top
+            // check if we should remove any views at the top.
             View firstChild = getChildAt(0);
+            Log.i("DraggableGridView", "firstChild bottom: " + firstChild.getBottom() + " offset: " + offset);
+            
             while (firstChild != null && firstChild.getBottom() + offset < 0) {
                 // remove the top view
+            	Log.i("DraggableGridView", "Removing child view with bottom + offset: " + firstChild.getBottom() + offset);
                 removeViewInLayout(firstChild);
                 childCount--;
                 this.cachedItemViews.addLast(firstChild);
+                Log.i("DraggableGridView", "childCount: " + childCount + " this.cachedItemViews.size():" + this.cachedItemViews.size());
                 this.firstItemPosition++;
 
                 // update the list offset (since we've removed the top child)
@@ -645,7 +652,7 @@ public class DraggableGridView extends AdapterView
             }
             if (this.touchState == TOUCH_STATE_SCROLL) {
             	int scrolledDistance = (int)event.getY() - this.touchStartY;
-            	Log.i("DraggableGridView", "event.getY: " + event.getY() + " touchStartY: " + this.touchStartY + " scrolledDistance: " + scrolledDistance);
+            	// Log.i("DraggableGridView", "event.getY: " + event.getY() + " touchStartY: " + this.touchStartY + " scrolledDistance: " + scrolledDistance);
             	scrollList(scrolledDistance);
             }
 //          int scrolledDistance = (int)event.getY() - this.touchStartY;
@@ -785,9 +792,6 @@ public class DraggableGridView extends AdapterView
         int row    = index / this.columnCount;
         int x      = padding + (this.childSize + padding) * column;
         int y      = padding + (this.childSize + padding) * row + /*this.scroll*/ this.listTop;
-        // ("DraggableGridView", "childSize: " + this.childSize + " padding: " + padding + " row: " + row);
-        // Log.i("DraggableGridView", "padding + (childSize + padding) * row: " + (padding + (this.childSize + padding) * row));
-        Log.i("DraggableGridView", "listTop: " + this.listTop + " y: " + y);
         return new Point(x, y);
     }
     
@@ -833,7 +837,7 @@ public class DraggableGridView extends AdapterView
     	while (this.listTop > 0) {
     		this.lastScrollChange = 0.1f * this.listTop;
     		this.listTop = (int)(this.listTop - lastScrollChange);
-    		Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
+    		// Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
     		if ( Math.abs(this.lastScrollChange) < 0.5f) {
     			this.lastScrollChange = 0;
     			this.listTop = 0;
@@ -859,9 +863,9 @@ public class DraggableGridView extends AdapterView
 
     	while (this.listTop < minimumListTop) {
     		this.lastScrollChange = 0.1f * Math.abs(minimumListTop - this.listTop);
-    		Log.i("DraggableGridView", "lastScrollChange: " + lastScrollChange);
+    		// Log.i("DraggableGridView", "lastScrollChange: " + lastScrollChange);
     		this.listTop = (int)(this.listTop + lastScrollChange);
-    		Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
+    		// Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
     		if (Math.abs(this.lastScrollChange) < 0.5f) {
     			this.lastScrollChange = 0;
     			this.listTop = 0;
@@ -1116,10 +1120,14 @@ public class DraggableGridView extends AdapterView
      * @return A cached view or, if none was found, null
      */
     private View getCachedView() {
+    	
+    	View view = null;
         if (this.cachedItemViews.size() != 0) {
-            return this.cachedItemViews.removeFirst();
+        	view = this.cachedItemViews.removeFirst();
+        	Log.i("DraggableGridView", "recycling a view. cachedItemViews: " + this.cachedItemViews.size() );
+        	// getView() must change the content in the recycled view.
         }
-        return null;
+        return view;
     }
 
 }

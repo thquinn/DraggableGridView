@@ -59,7 +59,10 @@ public class DraggableGridViewSampleActivity extends Activity {
         this.addButton = ((Button)findViewById(R.id.add_button));
         this.clearButton = ((Button)findViewById(R.id.clear_button));
         this.viewButton = ((Button)findViewById(R.id.view_button));
-
+        this.addButton.getBackground().setAlpha(210);
+        this.clearButton.getBackground().setAlpha(210);
+        this.viewButton.getBackground().setAlpha(210);
+        
         String wordsString = getApplication().getString(R.string.words);
         String[] wordArray = wordsString.split(" ");
         List<String> wordList = Arrays.asList(wordArray);
@@ -101,6 +104,7 @@ public class DraggableGridViewSampleActivity extends Activity {
     	this.addButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View arg0) {
 				String word = allWords.get(random.nextInt(allWords.size()));
+				word = "" + DraggableGridViewSampleActivity.this.gridView.getAdapter().getCount() + " " + word;
 				poem.add(word);
 				// poem.notifyDataSetChanged();
 				gridView.requestLayout();
@@ -139,7 +143,7 @@ public class DraggableGridViewSampleActivity extends Activity {
 	    Paint paint = new Paint();
 	    
 	    paint.setColor(Color.rgb(random.nextInt(128), random.nextInt(128), random.nextInt(128)));
-	    paint.setTextSize(24);
+	    paint.setTextSize(textSize);
 	    paint.setFlags(Paint.ANTI_ALIAS_FLAG);
 	    canvas.drawRect(new Rect(0, 0, bitmapSize, bitmapSize), paint);
 	    paint.setColor(Color.WHITE);
@@ -193,11 +197,13 @@ public class DraggableGridViewSampleActivity extends Activity {
 
         	if (imageView == null) {
         		imageView = new ImageView(this.context);
+        		// @TODO Instantiate LayoutParams only once.
         		imageView.setLayoutParams(new GridView.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
                 imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                String word = this.words.get(position);
-            	imageView.setImageBitmap( DraggableGridViewSampleActivity.getThumb(word) );
         	}
+
+        	String word = this.words.get(position);
+        	imageView.setImageBitmap( DraggableGridViewSampleActivity.getThumb(word) );
 
            return imageView;
         }
