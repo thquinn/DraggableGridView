@@ -116,6 +116,7 @@ public class DraggableGridViewSampleActivity extends Activity {
 				poem.clear();
 				// poem.notifyDataSetChanged();
 				gridView.removeAllViewsInLayout();
+				gridView.invalidate();
 				gridView.requestLayout();
 			}
 		});

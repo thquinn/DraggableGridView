@@ -68,6 +68,8 @@ public class DraggableGridView extends AdapterView
 
     /** Current touch state */
     private int touchState = TOUCH_STATE_RESTING;
+    
+    private int viewHeight;
 
     /**
 	 * Adapter with all the data.
@@ -498,7 +500,7 @@ public class DraggableGridView extends AdapterView
     }
 
     /**
-     * Calls the item click listener for the child with at the specified
+     * Calls the item click listener for the child with the specified
      * coordinates
      * 
      * @param x The x-coordinate
@@ -845,30 +847,32 @@ public class DraggableGridView extends AdapterView
     		requestLayout();
     	}
 
-    	int rows = getChildCount() / this.columnCount +
-    			   getChildCount() % this.columnCount > 0 ? 1 : 0;
+    	int rows = (getChildCount() / this.columnCount) +
+    			   ((getChildCount() % this.columnCount) > 0 ? 1 : 0);
     	int listDepth = rows * (padding + this.childSize);
     	WindowManager windowManager = (WindowManager)getContext().getSystemService(Context.WINDOW_SERVICE);
     	Display display = windowManager.getDefaultDisplay();
-    	int screenHeight = display.getHeight();
+    	// int screenHeight = display.getHeight();
+    	Log.i("DraggableGridView", "childCount " + getChildCount() + " viewHeight: " + this.viewHeight);
 
     	int minimumListTop = 0;
     	
-    	if (listDepth > screenHeight) {
-    		minimumListTop = 0 - (listDepth - screenHeight);
+    	if (listDepth > this.viewHeight) {
+    		minimumListTop = 0 - (listDepth - this.viewHeight) - padding;
     	}
     	else {
     		minimumListTop = 0;
     	}
+    	Log.i("DraggableGridView", "rows: " + rows + " listDepth: " + listDepth + " minimumListTop: " + minimumListTop);
 
     	while (this.listTop < minimumListTop) {
     		this.lastScrollChange = 0.1f * Math.abs(minimumListTop - this.listTop);
-    		// Log.i("DraggableGridView", "lastScrollChange: " + lastScrollChange);
+    		Log.i("DraggableGridView", "listTop: " + this.listTop + " lastScrollChange: " + lastScrollChange);
     		this.listTop = (int)(this.listTop + lastScrollChange);
     		// Log.i("DraggableGridView", "backing up listTop: " + this.listTop);
     		if (Math.abs(this.lastScrollChange) < 0.5f) {
     			this.lastScrollChange = 0;
-    			this.listTop = 0;
+    			this.listTop = minimumListTop;
     		}
     		requestLayout();
     	}
@@ -885,6 +889,15 @@ public class DraggableGridView extends AdapterView
     
         handler.postDelayed(this, 25);
 */
+    }
+
+
+    @Override
+    protected void onMeasure (int widthMeasureSpec, int heightMeasureSpec)
+    {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        // int width = MeasureSpec.getSize(widthMeasureSpec);
+        this.viewHeight = MeasureSpec.getSize(heightMeasureSpec);
     }
 
     
