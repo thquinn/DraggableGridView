@@ -301,7 +301,8 @@ public class DraggableGridView extends AdapterView
         }
     	// Position the views.
     	positionItems();
-    	//invalidate();
+    	// @TODO Avoid invalidating more views than necessary.
+    	invalidate();
     }
   
 
@@ -532,8 +533,7 @@ public class DraggableGridView extends AdapterView
     }
 
     /**
-     * Removes view that are outside of the visible part of the list. Will not
-     * remove all views.
+     * Removes views that are outside of the visible part of the list.
      * 
      * @param offset Offset of the visible area
      */
