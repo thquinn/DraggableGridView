@@ -1,2 +1,19 @@
+# built application files
+*.apk
+*.ap_
 
-README.rdoc~
+# files for the dex VM
+*.dex
+
+# Java class files
+*.class
+
+# generated files
+DraggableGridView/bin/*
+DraggableGridView/gen/*
+
+# Local configuration file (sdk path, etc)
+*.DS_STORE
+
+DraggableGridView/bin/DraggableGridViewSample.apk
+DraggableGridView/bin/resources.ap_
