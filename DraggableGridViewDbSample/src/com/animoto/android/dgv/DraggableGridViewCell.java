@@ -11,7 +11,7 @@ public interface DraggableGridViewCell {
 		}
 	}
 	
-	public String convertIdentifier();
+	public String getConvertIdentifier();
 	
 	
 	public boolean changeDataForCell(Object obj);

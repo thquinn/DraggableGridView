@@ -13,6 +13,8 @@ import com.animoto.android.dgv.DraggableGridViewCell.CellDataNotSetException;
 import com.animoto.android.dgvdbsample.model.Photo;
 
 public class CustomPhotoCell extends FrameLayout implements DraggableGridViewCell {
+	public static final String CUSTOM_PHOTO_CELL_IDENTIFIER = "CUSTOM_PHOTO_CELL";
+	
 	Photo mPhoto = null;
 	TextView cellTitle = null;
 	TextView cellInfo = null;
@@ -50,6 +52,10 @@ public class CustomPhotoCell extends FrameLayout implements DraggableGridViewCel
 		}
 	}
 	
+	public Photo getPhoto() {
+		return mPhoto;
+	}
+	
 	
 	public int getPositionInData() throws CellDataNotSetException {
 		if (mPhoto == null) {
@@ -57,8 +63,8 @@ public class CustomPhotoCell extends FrameLayout implements DraggableGridViewCel
 		} else return mPhoto.position;
 	}
 	
-	public String convertIdentifier() {
-		return "CUSTOM_PHOTO_CELL";
+	public String getConvertIdentifier() {
+		return CUSTOM_PHOTO_CELL_IDENTIFIER;
 	}
 
 }

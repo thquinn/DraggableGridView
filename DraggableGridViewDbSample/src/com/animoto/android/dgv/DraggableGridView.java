@@ -4,6 +4,7 @@ package com.animoto.android.dgv;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Hashtable;
 
 
 import android.app.Activity;
@@ -47,9 +48,11 @@ public class DraggableGridView extends AdapterView implements View.OnTouchListen
     protected OnRearrangeListener onRearrangeListener;
     protected OnClickListener secondaryOnClickListener;
     private OnItemClickListener onItemClickListener;
+
+	
+	
     
-    
-    protected Adapter mAdapter;
+    protected DraggableGridViewAdapter mAdapter;
     
     //CONSTRUCTOR AND HELPERS
     public DraggableGridView (Context context, AttributeSet attrs) {
@@ -62,7 +65,6 @@ public class DraggableGridView extends AdapterView implements View.OnTouchListen
         DisplayMetrics metrics = new DisplayMetrics();
         ((Activity)context).getWindowManager().getDefaultDisplay().getMetrics(metrics);
 		dpi = metrics.densityDpi;
-		Log.i(LOG_TAG, "finished creating DraggableGridView widget");
     }
     protected void setListeners()
     {
@@ -102,7 +104,8 @@ public class DraggableGridView extends AdapterView implements View.OnTouchListen
     
     @Override
     public void setAdapter(Adapter adapter) {
-    	this.mAdapter = adapter;    	
+    	if (!(adapter instanceof DraggableGridViewAdapter)) throw new IllegalArgumentException("DraggableGridView requires an adapter that is a subclass of DraggableGridViewAdapter");
+    	this.mAdapter = (DraggableGridViewAdapter)adapter;    	
     	this.requestLayout();
     	
     }
@@ -134,6 +137,11 @@ public class DraggableGridView extends AdapterView implements View.OnTouchListen
     	super.removeViewAt(index);
     	newPositions.remove(index);
     };
+    
+    protected void removeAndRecycleCell(View childCell) {
+    	this.removeViewInLayout(childCell);
+    	if (childCell instanceof DraggableGridViewCell) mAdapter.recycleCell((DraggableGridViewCell)childCell);
+    }
     
     //LAYOUT
     @Override
@@ -194,7 +202,7 @@ public class DraggableGridView extends AdapterView implements View.OnTouchListen
 	            child.layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize); //view group will layout the children based on the sizes determined for available columns
 	            addedPositions.add(new Integer(childPositionInData));
         	} else {
-        		this.removeViewInLayout(child);
+        		this.removeAndRecycleCell(child);
         	}
         }
         
