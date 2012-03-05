@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <item android:id="@+id/dgv_item1"
+          android:title="@string/item1"
+          android:icon="@drawable/add_icon"
+          android:showAsAction="always"
+          />    
+          
+	<item android:id="@+id/dgv_item2"
+          android:title="@string/item2"
+          android:icon="@drawable/add_icon" 
+          android:showAsAction="never"
+          />   
+          
+
+</menu>

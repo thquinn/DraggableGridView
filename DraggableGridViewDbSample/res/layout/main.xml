@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+
+
+    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+        
+    <com.animoto.android.dgv.DraggableGridView android:id="@+id/vgv" android:layout_height="fill_parent" android:layout_width="fill_parent" android:layout_alignParentTop="true" android:layout_alignParentLeft="true"></com.animoto.android.dgv.DraggableGridView>
+	</RelativeLayout>
+
+</LinearLayout>

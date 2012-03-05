@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.animoto.android.dgvdbsample.CustomPhotoCell 
+    xmlns:android="http://schemas.android.com/apk/res/android" 
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="#FFFFFF" 
+    >
+    
+    	<ImageView
+    	android:id="@+id/photo_cell_image" 
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scaleType="fitCenter"
+        />
+    	
+    	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+		    android:layout_width="fill_parent"
+		    android:layout_height="fill_parent"
+		    android:orientation="vertical" >
+		    
+			<TextView
+			    android:id="@+id/photo_cell_contents"
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:layout_marginTop="10px" 
+			    android:text="@string/photo_cell_default_text" 
+			    android:textColor="#000000" 
+			    android:textSize="50px"
+			    ></TextView>
+			
+			
+			<!-- TextView
+			    android:id="@+id/photo_cell_contents2"
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:layout_marginTop="10px" 
+			    android:text="@string/photo_cell_default_text" 
+			    android:textColor="#0000FF" 
+			    android:textSize="15px" ></TextView-->
+		
+		 </LinearLayout>
+</com.animoto.android.dgvdbsample.CustomPhotoCell>

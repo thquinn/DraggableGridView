@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello">Hello World, DraggableGridViewDbSampleActivity!</string>
+    <string name="app_name">DraggableGridViewDbSample</string>
+	<string name="item1">Item 1</string>
+	<string name="item2">Item 2</string>
+	<string name="photo_cell_default_text">Photo Cell</string>
+</resources>
