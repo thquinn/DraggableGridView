@@ -46,7 +46,7 @@ public class CustomPhotoCell extends FrameLayout implements DraggableGridViewCel
 	protected void setPhoto(Photo p) {
 		this.mPhoto = p;
 		if (p != null && cellTitle != null) {
-			cellTitle.setText("" + p.position);
+			cellTitle.setText("" + p.id);
 			/**cellInfo.setText(p.fileName);
 			int imgId = this.getContext().getResources().getIdentifier(p.fileName, "drawable", "com.animoto.android.dgvdbsample");
 			cellImage.setImageDrawable(this.getContext().getResources().getDrawable(imgId));**/
