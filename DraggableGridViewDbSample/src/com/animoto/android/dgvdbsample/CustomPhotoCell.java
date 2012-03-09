@@ -33,6 +33,7 @@ public class CustomPhotoCell extends FrameLayout implements DraggableGridViewCel
 	}
 	
 	
+	
 	public boolean changeDataForCell(Object obj) {
 		if (obj != null && obj instanceof Photo) {
 			this.setPhoto((Photo)obj);
