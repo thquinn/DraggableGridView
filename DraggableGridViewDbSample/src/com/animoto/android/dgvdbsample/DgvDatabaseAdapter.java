@@ -61,7 +61,7 @@ public class DgvDatabaseAdapter extends DraggableGridViewAdapter {
 		CustomPhotoCell cellView = (CustomPhotoCell)this.getConvertibleCell(CustomPhotoCell.CUSTOM_PHOTO_CELL_IDENTIFIER);
 		if (cellView == null) cellView = (CustomPhotoCell)inflater.inflate(R.layout.photo_cell, null);
 		else {
-			Log.i("dgv", "Will be recycling cell with old position " + cellView.getPhoto().position + " in to new cell with position " + p.position);
+			//Log.i("dgv", "Will be recycling cell with old position " + cellView.getPhoto().position + " in to new cell with position " + p.position);
 		}
 		if (p != null) cellView.setPhoto(p);
 		

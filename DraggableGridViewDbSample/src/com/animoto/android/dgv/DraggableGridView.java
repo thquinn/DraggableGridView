@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 
 import com.animoto.android.dgv.DraggableGridViewCell.CellDataNotSetException;
+import com.animoto.android.dgvdbsample.model.ORMHelper;
 
 import android.app.Activity;
 import android.content.Context;
@@ -207,12 +208,16 @@ public class DraggableGridView extends AdapterView implements
         		continue;
         	}
         	
+        	if (childPositionInData == dragged)
+        		continue;
+        	
         	if (childPositionInData >= firstCellPosition && childPositionInData <= finalCellPosition) {
         		Point xy = getCoorFromIndex(childPositionInData); //This probably needs to be renormalized based on what is being shown. 
         		child.measure(MeasureSpec.makeMeasureSpec(child.getLayoutParams().width, MeasureSpec.UNSPECIFIED),
 	                    MeasureSpec.makeMeasureSpec(child.getLayoutParams().height, MeasureSpec.UNSPECIFIED));
 
 	            child.layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize); //view group will layout the children based on the sizes determined for available columns
+	            child.invalidate();
 	            addedPositions.add(new Integer(childPositionInData));
         	} else {
         		this.removeAndRecycleCell(child);
@@ -222,7 +227,7 @@ public class DraggableGridView extends AdapterView implements
 		for (int i = firstCellPosition; i <= finalCellPosition; i++) {
 			if (i == dragged)
 				continue;
-			else if (!addedPositions.contains(new Integer(i)) && i >= 0 && i < totalAvailableCells && getIndexFromPositionInData(i) == -1) {
+			if (!addedPositions.contains(new Integer(i)) && i >= 0 && i < totalAvailableCells && getIndexFromPositionInData(i) == -1) {
 				addedPositions.add(new Integer(i));
 				//Log.i("dgv", "Now creating view for position: " + i);
 				View child = mAdapter.getView(i, null, this);
@@ -237,10 +242,44 @@ public class DraggableGridView extends AdapterView implements
 		}
 	}
 	
-	protected void notifyDataSetChanged()
-	{
-		removeAllViewsInLayout();
-		lastDelta = .01f;
+	protected void reorderChildren() {
+		if (onRearrangeListener != null)
+			onRearrangeListener.onRearrange(dragged, lastTarget);
+
+		if (lastTarget < dragged)
+			for (int i = 0; i < getChildCount(); i++)
+			{
+				getChildAt(i).clearAnimation();
+				int pos = getPositionInData(i);
+				if (pos >= lastTarget && pos < dragged)
+				{
+					((DraggableGridViewCell) getChildAt(i)).changeDataForCell(ORMHelper.photoDao.getPhotoWithPosition(pos + 1));
+					Log.i("dgv", "Changing photo at pos " + pos + " to pos " + (pos + 1));
+				}
+				else if (pos == dragged)
+				{
+					((DraggableGridViewCell) getChildAt(i)).changeDataForCell(ORMHelper.photoDao.getPhotoWithPosition(lastTarget));
+					Log.i("dgv", "Changing photo at pos " + pos + " to pos " + lastTarget);
+				}
+			}
+		else if (dragged < lastTarget)
+			for (int i = 0; i < getChildCount(); i++)
+			{
+				getChildAt(i).clearAnimation();
+				int pos = getPositionInData(i);
+				if (pos > dragged && pos <= lastTarget)
+				{
+					((DraggableGridViewCell) getChildAt(i)).changeDataForCell(ORMHelper.photoDao.getPhotoWithPosition(pos - 1));
+					Log.i("dgv", "Changing photo at pos " + pos + " to pos " + (pos - 1));
+				}
+				else if (pos == dragged)
+				{
+					((DraggableGridViewCell) getChildAt(i)).changeDataForCell(ORMHelper.photoDao.getPhotoWithPosition(lastTarget));
+					Log.i("dgv", "Changing photo at pos " + pos + " to pos " + lastTarget);
+				}
+			}
+		invalidate();
+		onLayout(true, getLeft(), getTop(), getRight(), getBottom());
 	}
 
 	protected Point getCoorFromIndex(int index) {
@@ -257,7 +296,7 @@ public class DraggableGridView extends AdapterView implements
 		
 		if (i == childCount - 1)
 			return getIndexFromPositionInData(dragged);
-		else if (i >= dragged)
+		else if (i >= getIndexFromPositionInData(dragged))
 			return i + 1;
 		return i;
 	}
@@ -410,10 +449,10 @@ public class DraggableGridView extends AdapterView implements
 				else {
 					Point xy = getCoorFromIndex(draggedIndex);
 					v.layout(xy.x, xy.y, xy.x + childSize, xy.y + childSize);
-					v.clearAnimation();
-					if (v instanceof ImageView)
-						((ImageView) v).setAlpha(255);
 				}
+				v.clearAnimation();
+				if (v instanceof ImageView)
+					((ImageView) v).setAlpha(255);
 				lastTarget = -1;
 				dragged = -1;
 			}
@@ -428,7 +467,7 @@ public class DraggableGridView extends AdapterView implements
 	// EVENT HELPERS
 	protected void animateDragged() {
 		View v = getChildAt(getIndexFromPositionInData(dragged));
-		Point coor = getCoorFromIndex(getIndexFromPositionInData(dragged));
+		Point coor = getCoorFromIndex(dragged);
 		int x = coor.x + childSize / 2, y = coor.y + childSize / 2;
 		int l = x - (3 * childSize / 4), t = y - (3 * childSize / 4);
 		v.layout(l, t, l + (childSize * 3 / 2), t + (childSize * 3 / 2));
@@ -450,6 +489,7 @@ public class DraggableGridView extends AdapterView implements
 	}
 
 	protected void animateGap(int target) {
+		Log.i("dgv", "Starting gap animation with dragged: " + dragged);
 		for (int i = 0; i < getChildCount(); i++) {
 			int pos = getPositionInData(i);
 			View v = getChildAt(i);
@@ -460,6 +500,8 @@ public class DraggableGridView extends AdapterView implements
 				newPos--;
 			else if (target < dragged && pos >= target && pos < dragged)
 				newPos++;
+			
+			//Log.i("dgv", "Animating view with position: " + pos);
 
 			// animate
 			int oldPos = pos;
@@ -470,15 +512,10 @@ public class DraggableGridView extends AdapterView implements
 
 			Point oldXY = getCoorFromIndex(oldPos);
 			Point newXY = getCoorFromIndex(newPos);
-			Point oldOffset = new Point(oldXY.x - v.getLeft(), oldXY.y
-					- v.getTop());
-			Point newOffset = new Point(newXY.x - v.getLeft(), newXY.y
-					- v.getTop());
+			Point oldOffset = new Point(oldXY.x - v.getLeft(), oldXY.y - v.getTop());
+			Point newOffset = new Point(newXY.x - v.getLeft(), newXY.y - v.getTop());
 
-			TranslateAnimation translate = new TranslateAnimation(
-					Animation.ABSOLUTE, oldOffset.x, Animation.ABSOLUTE,
-					newOffset.x, Animation.ABSOLUTE, oldOffset.y,
-					Animation.ABSOLUTE, newOffset.y);
+			TranslateAnimation translate = new TranslateAnimation(Animation.ABSOLUTE, oldOffset.x, Animation.ABSOLUTE, newOffset.x, Animation.ABSOLUTE, oldOffset.y, Animation.ABSOLUTE, newOffset.y);
 			translate.setDuration(animT);
 			translate.setFillEnabled(true);
 			translate.setFillAfter(true);
@@ -487,30 +524,6 @@ public class DraggableGridView extends AdapterView implements
 
 			newPositions.set(pos, newPos);
 		}
-	}
-
-	protected void reorderChildren() {
-		if (onRearrangeListener != null)
-			onRearrangeListener.onRearrange(dragged, lastTarget);
-		notifyDataSetChanged();
-		/*
-		 * FIGURE OUT HOW TO REORDER CHILDREN WITHOUT REMOVING THEM ALL AND
-		 * RECONSTRUCTING THE LIST!!! if (onRearrangeListener != null)
-		 * onRearrangeListener.onRearrange(dragged, lastTarget); ArrayList<View>
-		 * children = new ArrayList<View>(); for (int i = 0; i <
-		 * getChildCount(); i++) { getChildAt(i).clearAnimation();
-		 * children.add(getChildAt(i)); } removeAllViews(); while (dragged !=
-		 * lastTarget) if (lastTarget == children.size()) // dragged and dropped
-		 * to the right of the last element {
-		 * children.add(children.remove(dragged)); dragged = lastTarget; } else
-		 * if (dragged < lastTarget) // shift to the right {
-		 * Collections.swap(children, dragged, dragged + 1); dragged++; } else
-		 * if (dragged > lastTarget) // shift to the left {
-		 * Collections.swap(children, dragged, dragged - 1); dragged--; } for
-		 * (int i = 0; i < children.size(); i++) { newPositions.set(i, -1);
-		 * addView(children.get(i)); } onLayout(true, getLeft(), getTop(),
-		 * getRight(), getBottom());
-		 */
 	}
 
 	public void scrollToTop() {
