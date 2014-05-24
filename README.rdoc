@@ -24,6 +24,7 @@ To start using DraggableGridView:
           
           dgv = ((DraggableGridView)findViewById(R.id.dgv));
       }
+    }
 * You're done! You can start adding any type of view you'd like.
     TextView tv = new TextView(this);
     tv.setText("Hello world!");
